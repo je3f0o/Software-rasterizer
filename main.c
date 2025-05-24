@@ -19,6 +19,8 @@ int canvas[HEIGHT * WIDTH];
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
 
+#define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
+
 typedef struct {
   int x, y;
 } vec2;
@@ -60,27 +62,32 @@ void rasterize_triangle(Vertex triangle[3]) {
   for (int y = min_y; y <= max_y; ++y) {
     for (int x = min_x; x <= max_x; ++x) {
       vec2 p = {x, y};
-      int w0 = cross_edge(v0, v1, p);
-      int w1 = cross_edge(v1, v2, p);
-      int w2 = cross_edge(v2, v0, p);
-
-      float r0 = w0 / area;
-      float r1 = w1 / area;
-      float r2 = w2 / area;
+      int w0 = cross_edge(v1, v2, p);
+      int w1 = cross_edge(v2, v0, p);
+      int w2 = cross_edge(v0, v1, p);
 
       if ((w0 | w1 | w2) > 0) {
-        int index = y * WIDTH + x;
+        float r0 = w0 / area;
+        float r1 = w1 / area;
+        float r2 = w2 / area;
 
         int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
         int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
         int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
         int a = 0xFF;
 
+        // Clamp to 0–255
+        r = CLAMP(r, 0, 255);
+        g = CLAMP(g, 0, 255);
+        b = CLAMP(b, 0, 255);
+
         int color = 0;
-        color = (color | a) << 8;
-        color = (color | b) << 8;
-        color = (color | g) << 8;
-        color = (color | r);
+        color = (color | (a & 0xFF)) << 8;
+        color = (color | (b & 0xFF)) << 8;
+        color = (color | (g & 0xFF)) << 8;
+        color = (color | (r & 0xFF));
+
+        int index = y * WIDTH + x;
         canvas[index] = color;
       }
     }
