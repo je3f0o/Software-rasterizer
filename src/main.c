@@ -17,6 +17,11 @@ int stbi_write_png(char const *filename, int w, int h, int comp, const void  *da
 #include "stb_image_write.h"
 #endif
 
+#define GRAY   0xFF181818
+#define RED    0xFF0000FF
+#define GREEN  0xFF00FF00
+#define BLUE   0xFFFF0000
+
 void render(const Canvas* canvas) {
   assert(canvas != NULL);
   stbi_write_png("image.png", canvas->width, canvas->height, 4, canvas->data, 0);
@@ -24,7 +29,7 @@ void render(const Canvas* canvas) {
 
 void canvas_draw_scene(Canvas* canvas) {
   // clear background
-  canvas_clear(canvas, 0xFF181818);
+  canvas_clear(canvas, GRAY);
 
   //vec2 triangle1[3] = { {20, 30}, {80, 70}, {20, 70} };
   //vec2 triangle2[3] = { {20, 30}, {80, 30}, {80, 70} };
@@ -38,12 +43,19 @@ void canvas_draw_scene(Canvas* canvas) {
   //  { {(float)WIDTH * 0.1 , (float)HEIGHT * 0.9} , {  0 , 255 , 0} }   ,
   //  { {(float)WIDTH * 0.9 , (float)HEIGHT * 0.9} , {  0 , 0   , 255} } ,
   //};
-  Vertex triangle[3] = {
-    { {(float)canvas->width * 0.5 , (float)canvas->height * 0.1} , {255 , 0   , 0} }   ,
-    { {(float)canvas->width * 0.9 , (float)canvas->height * 0.9} , {  0 , 255 , 0} }   ,
-    { {(float)canvas->width * 0.1 , (float)canvas->height * 0.9} , {  0 , 0   , 255} } ,
-  };
-  canvas_fill_triangle(canvas, triangle);
+  //Vertex triangle[3] = {
+  //  { {(float)canvas->width * 0.5 , (float)canvas->height * 0.1} , {255 , 0   , 0} }   ,
+  //  { {(float)canvas->width * 0.9 , (float)canvas->height * 0.9} , {  0 , 255 , 0} }   ,
+  //  { {(float)canvas->width * 0.1 , (float)canvas->height * 0.9} , {  0 , 0   , 255} } ,
+  //};
+  //canvas_fill_triangle(canvas, triangle);
+
+  canvas_fill_rect(canvas, (Rect) {
+    .x      = -150,
+    .y      = 50,
+    .width  = 100,
+    .height = 100,
+  }, RED);
 
   // TODO: add more render targets
   render(canvas);

@@ -35,10 +35,7 @@ canvas.height = innerHeight;
       stbi_write_png(filename, w, h, comp, data, stride_in_bytes) {
         const {buffer} = wasm.instance.exports.memory;
         const buffer_view = new Uint8ClampedArray(buffer, data, w * h * comp);
-
-        const image_data = new ImageData(buffer_view, w);
-        console.log(image_data);
-        ctx.putImageData(image_data, 0, 0);
+        ctx.putImageData(new ImageData(buffer_view, w), 0, 0);
       }
     },
   });

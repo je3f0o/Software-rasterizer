@@ -14,6 +14,7 @@ void* malloc(unsigned long size);
 void  free(void* ptr);
 int   abs(int j);
 #else
+//#include <stdio.h>
 #include <stdlib.h>
 #endif
 
@@ -105,15 +106,17 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
   );
   if (is_rect_outside) return;
 
-  int x = CLAMP(rect.x, 0, (i32)canvas->width);
-  int y = CLAMP(rect.y, 0, (i32)canvas->height);
+  int offset_x = CLAMP(min_x, 0, (i32)canvas->width);
+  int offset_y = CLAMP(min_y, 0, (i32)canvas->height);
 
-  int width  = CLAMP(abs(rect.width) , 0, (int)canvas->width  - x);
-  int height = CLAMP(abs(rect.height), 0, (int)canvas->height - y);
+  int width  = max_x - min_x;
+  int height = max_y - min_y;
+  if (min_x < 0) width  += min_x;
+  if (min_y < 0) height += min_y;
 
-  for (; y < height; ++y) {
-    for (; x < width; ++x) {
-      canvas_put_pixel(canvas, x, y, color);
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      canvas_put_pixel(canvas, x+offset_x, y+offset_y, color);
     }
   }
 }
