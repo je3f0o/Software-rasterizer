@@ -1,5 +1,6 @@
 CC        = clang
 CFLAGS    = -Wall -Wextra -g
+LIBS      = -lm
 HEADERS   = -I./include
 
 WEB_DIR          = web
@@ -10,7 +11,7 @@ run: rasterizer
 	./rasterizer && feh --auto-zoom image.png
 
 rasterizer: $(NATIVE_BUILD_DIR)/main.o $(NATIVE_BUILD_DIR)/lib.o $(NATIVE_BUILD_DIR)/stb_image_write.o
-	$(CC) $(CFLAGS) $(HEADERS) $^ -o $@
+	$(CC) $(CFLAGS) $(HEADERS) $(LIBS) $^ -o $@
 
 wasm: $(WEB_DIR)/lib.wasm
 
@@ -23,7 +24,7 @@ $(NATIVE_BUILD_DIR)/stb_image_write.o: include/stb_image_write.h
 
 $(NATIVE_BUILD_DIR)/%.o: src/%.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(HEADERS) -c $^ -o $@
+	$(CC) $(CFLAGS) $(HEADERS) $(LIBS) -c $^ -o $@
 
 $(WASM_BUILD_DIR)/%.o: src/%.c
 	mkdir -p $(dir $@)

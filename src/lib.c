@@ -58,17 +58,28 @@ void canvas_fill_triangle(Canvas* canvas, Vertex triangle[3]) {
   int max_x = MAX(MAX(v0.x, v1.x), v2.x);
   int max_y = MAX(MAX(v0.y, v1.y), v2.y);
 
-  for (int y = min_y; y <= max_y; ++y) {
-    for (int x = min_x; x <= max_x; ++x) {
-      vec2 p = {x, y};
-      int w0 = cross_edge(v1, v2, p);
-      int w1 = cross_edge(v2, v0, p);
-      int w2 = cross_edge(v0, v1, p);
+  int delta_v0_col = v1.y - v2.y;
+  int delta_v1_col = v2.y - v0.y;
+  int delta_v2_col = v0.y - v1.y;
 
+  int delta_v0_row = v2.x - v1.x;
+  int delta_v1_row = v0.x - v2.x;
+  int delta_v2_row = v1.x - v0.x;
+
+  vec2 p = {min_x, min_y};
+  int w0_row = cross_edge(v1, v2, p);
+  int w1_row = cross_edge(v2, v0, p);
+  int w2_row = cross_edge(v0, v1, p);
+
+  for (int y = min_y; y <= max_y; ++y) {
+    int w0 = w0_row;
+    int w1 = w1_row;
+    int w2 = w2_row;
+    for (int x = min_x; x <= max_x; ++x) {
       if ((w0 | w1 | w2) > 0) {
         float r0 = w0 / area;
         float r1 = w1 / area;
-        float r2 = w2 / area;
+        float r2 = 1 - r0 - r1;
 
         int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
         int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
@@ -88,7 +99,13 @@ void canvas_fill_triangle(Canvas* canvas, Vertex triangle[3]) {
 
         canvas_put_pixel(canvas, x, y, color);
       }
+      w0 += delta_v0_col;
+      w1 += delta_v1_col;
+      w2 += delta_v2_col;
     }
+    w0_row += delta_v0_row;
+    w1_row += delta_v1_row;
+    w2_row += delta_v2_row;
   }
 }
 
@@ -101,8 +118,8 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
   bool is_rect_outside = (
     max_x < 0 ||
     max_y < 0 ||
-    min_x > (i32)canvas->width ||
-    min_y > (i32)canvas->height
+    min_x >= (i32)canvas->width ||
+    min_y >= (i32)canvas->height
   );
   if (is_rect_outside) return;
 

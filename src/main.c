@@ -13,6 +13,7 @@
 void assert(bool);
 int stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes);
 #else
+#include <math.h>
 #include <assert.h>
 #include "stb_image_write.h"
 #endif
@@ -24,7 +25,36 @@ int stbi_write_png(char const *filename, int w, int h, int comp, const void  *da
 
 void render(const Canvas* canvas) {
   assert(canvas != NULL);
-  stbi_write_png("image.png", canvas->width, canvas->height, 4, canvas->data, 0);
+  stbi_write_png("image3.png", canvas->width, canvas->height, 4, canvas->data, 0);
+}
+
+#ifndef M_PIf
+  #define M_PIf	3.14159265358979323846f	/* pi */
+#endif
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
+
+void vec2_rotate(vec2* p, float angle) {
+  float c = cosf(angle);
+  float s = sinf(angle);
+  float x = c*p->x - s*p->y;
+  float y = s*p->x + c*p->y;
+  p->x = x;
+  p->y = y;
+}
+
+void vec2_rotate_at(vec2* p, vec2 pivot, float angle) {
+  float c = cosf(angle);
+  float s = sinf(angle);
+  float px = p->x - pivot.x;
+  float py = p->y - pivot.y;
+  float x = c*px - s*py;
+  float y = s*px + c*py;
+  p->x = x + pivot.x;
+  p->y = y + pivot.y;
+}
+
+float radians(float degrees) {
+  return degrees * M_PIf/180.0;
 }
 
 void canvas_draw_scene(Canvas* canvas) {
@@ -43,15 +73,28 @@ void canvas_draw_scene(Canvas* canvas) {
   //  { {(float)WIDTH * 0.1 , (float)HEIGHT * 0.9} , {  0 , 255 , 0} }   ,
   //  { {(float)WIDTH * 0.9 , (float)HEIGHT * 0.9} , {  0 , 0   , 255} } ,
   //};
-  //Vertex triangle[3] = {
-  //  { {(float)canvas->width * 0.5 , (float)canvas->height * 0.1} , {255 , 0   , 0} }   ,
-  //  { {(float)canvas->width * 0.9 , (float)canvas->height * 0.9} , {  0 , 255 , 0} }   ,
-  //  { {(float)canvas->width * 0.1 , (float)canvas->height * 0.9} , {  0 , 0   , 255} } ,
-  //};
+  Vertex triangle[] = {
+    { {(float)canvas->width * 0.5 , (float)canvas->height * 0.1} , {255 , 0 , 0} },
+    { {(float)canvas->width * 0.9 , (float)canvas->height * 0.5} , {255 , 0 , 0} },
+    { {(float)canvas->width * 0.1 , (float)canvas->height * 0.5} , {255 , 0 , 0} },
+
+    { {(float)canvas->width * 0.1 , (float)canvas->height * 0.5} , {0, 0 , 255} },
+    { {(float)canvas->width * 0.9 , (float)canvas->height * 0.5} , {0, 0 , 255} },
+    { {(float)canvas->width * 0.5 , (float)canvas->height * 0.9} , {0, 0 , 255} },
+  };
+
+  vec2 center = {canvas->width*0.5, canvas->height*0.5};
+
+  for (size_t i = 0; i < ARRAY_LENGTH(triangle); ++i) {
+    //vec2_rotate(&triangle[i].point, radians(10));
+    vec2_rotate_at(&triangle[i].point, center, radians(30));
+  }
+
   //canvas_fill_triangle(canvas, triangle);
+  canvas_fill_triangle(canvas, &triangle[3]);
 
   canvas_fill_rect(canvas, (Rect) {
-    .x      = -150,
+    .x      = 50,
     .y      = 50,
     .width  = 100,
     .height = 100,
@@ -62,7 +105,7 @@ void canvas_draw_scene(Canvas* canvas) {
 }
 
 int main(void) {
-  Canvas* canvas = create_canvas(800, 600);
+  Canvas* canvas = create_canvas(50, 50);
   canvas_draw_scene(canvas);
   destroy_canvas(canvas);
   return 0;
