@@ -131,6 +131,9 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
   if (min_x < 0) width  += min_x;
   if (min_y < 0) height += min_y;
 
+  width  = MIN(width , (int)canvas->width  - offset_x);
+  height = MIN(height, (int)canvas->height - offset_y);
+
   for (int y = 0; y < height; ++y) {
     for (int x = 0; x < width; ++x) {
       canvas_put_pixel(canvas, x+offset_x, y+offset_y, color);
