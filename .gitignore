@@ -2,4 +2,6 @@
 *.swp
 *.swn
 *.wasm
-rasterizer
+bin
+build
+TODO.txt

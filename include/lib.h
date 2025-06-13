@@ -10,9 +10,12 @@ void* malloc(unsigned long size);
 void  free(void* ptr);
 void* memcpy(void*, const void*, size_t __n);
 void* memset(void *__s, int __c, size_t __n);
+void  assert(bool);
 int   abs(int j);
-
+float cosf(float);
+float sinf(float);
 #else
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #endif
@@ -22,6 +25,9 @@ int   abs(int j);
 #endif
 #define null NULL
 
+#ifndef M_PIf
+  #define M_PIf	3.14159265358979323846f
+#endif
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
 #define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
@@ -32,6 +38,13 @@ int   abs(int j);
   result = value;                \
   goto defer;                    \
 } while(0)
+
+#define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
+
+#define GRAY   0xFF181818
+#define RED    0xFF0000FF
+#define GREEN  0xFF00FF00
+#define BLUE   0xFFFF0000
 
 typedef int        i32;
 typedef uint32_t   u32;
