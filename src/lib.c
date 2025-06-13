@@ -7,12 +7,6 @@
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 #include "lib.h"
-#include <stdbool.h>
-
-#if !defined(__wasm__) || !defined(__wasm32__)
-#include <stdlib.h>
-#include <string.h>
-#endif
 
 Canvas* create_canvas(u32 width, u32 height) {
   size_t color_buffer_size = sizeof(u32)   * width * height;

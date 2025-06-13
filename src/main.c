@@ -6,17 +6,15 @@
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
-#include <SDL2/SDL.h>
-#include <stdbool.h>
 #include "lib.h"
 
 #if defined(__wasm__) || defined(__wasm32__)
 void  assert(bool);
 int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes);
-
 float cosf(float);
 float sinf(float);
 #else
+#include <SDL2/SDL.h>
 #include <math.h>
 #include <assert.h>
 #include "stb_image_write.h"
@@ -58,8 +56,6 @@ Vertex2D vertices_2d[] = {
 Vertex2D dest_vertices_2d[3] = {0};
 
 //void render(const Canvas* canvas) {
-//  assert(canvas != null);
-//  stbi_write_png("image3.png", canvas->width, canvas->height, 4, canvas->data, 0);
 //}
 
 void vec2_rotate_at(vec2i* dest, vec2i* p, vec2i pivot, float angle) {
@@ -94,6 +90,14 @@ float radians(float degrees) {
   return degrees * M_PIf/180.0;
 }
 
+void canvas_present(Canvas* canvas) {
+  assert(canvas != null);
+#if defined(__wasm__) || defined(__wasm32__) || defined(PLATFORM_IMAGE)
+  stbi_write_png("image.png", canvas->width, canvas->height, 4, canvas->color_buffer, 0);
+#elif defined(PLATFORM_SDL)
+#endif
+}
+
 void init_scene_3d(Canvas* canvas) {
   UNUSED(canvas);
   float z = 1.25;
@@ -113,7 +117,7 @@ void init_scene_3d(Canvas* canvas) {
 void canvas_update_3d(Canvas* canvas, double dt) {
   UNUSED(canvas);
   static float angle = 0;
-  angle += radians(2*dt);
+  angle += radians(10*dt);
   vec3 center = {0, 0, vertices[0].position.z};
 
   for (u32 i = 0; i < ARRAY_LENGTH(vertices); ++i) {
@@ -126,6 +130,8 @@ void canvas_render_3d(Canvas* canvas) {
 
   canvas_fill_triangle_3d(canvas, dest_vertices);
   canvas_fill_triangle_3d(canvas, &dest_vertices[3]);
+
+  canvas_present(canvas);
 }
 
 void init_scene_2d(Canvas* canvas) {
@@ -138,7 +144,7 @@ void init_scene_2d(Canvas* canvas) {
 
 void canvas_update_2d(Canvas* canvas, double dt) {
   static float angle = 0;
-  angle += radians(2*dt);
+  angle += radians(10*dt);
   vec2i center = {canvas->width*0.5, canvas->height*0.5};
   for (u32 i = 0; i < ARRAY_LENGTH(vertices_2d); ++i) {
     vec2_rotate_at(&dest_vertices_2d[i].position, &vertices_2d[i].position, center, angle);
@@ -149,8 +155,11 @@ void canvas_render_2d(Canvas* canvas) {
   // clear background
   canvas_clear(canvas, GRAY);
   canvas_fill_triangle_2d(canvas, dest_vertices_2d);
+
+  canvas_present(canvas);
 }
 
+#if !defined(__wasm__) || !defined(__wasm32__)
 int main(void) {
   int result = 0;
   SDL_Window*   window      = null;
@@ -210,7 +219,7 @@ int main(void) {
     if (SDL_LockTexture(framebuffer, null, &pixels, &pitch) != 0) {
       SDL_Log("SDL_LockTexture Error: %s", SDL_GetError());
     } else {
-      canvas_update_3d(canvas, 0.16);
+      canvas_update_3d(canvas, 1.0/60.0);
       canvas_render_3d(canvas);
       memcpy(pixels, canvas->color_buffer, canvas->width*canvas->height*4);
 
@@ -231,3 +240,4 @@ defer:
 
   return result;
 }
+#endif

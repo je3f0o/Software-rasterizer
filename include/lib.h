@@ -3,11 +3,18 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(__wasm__) || defined(__wasm32__)
 void* malloc(unsigned long size);
 void  free(void* ptr);
+void* memcpy(void*, const void*, size_t __n);
+void* memset(void *__s, int __c, size_t __n);
 int   abs(int j);
+
+#else
+#include <stdlib.h>
+#include <string.h>
 #endif
 
 #ifndef NULL

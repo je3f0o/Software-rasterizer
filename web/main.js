@@ -1,43 +1,53 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : main.js
  * Created at  : 2025-06-05
- * Updated at  : 2025-06-11
+ * Updated at  : 2025-06-13
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 const canvas = document.querySelector("canvas");
 const ctx    = canvas.getContext("2d");
-canvas.width  = 50;
-canvas.height = 50;
+canvas.width  = window.innerWidth;
+canvas.height = window.innerHeight;
 
-canvas.style.width  = "100%";
-canvas.style.height = "100%";
+const PAGE_SIZE = 64 * 1024;
 
 (async () => {
   let allocated_memory_size = 0;
   const wasm = await WebAssembly.instantiateStreaming(fetch("lib.wasm"), {
     env: {
-      cosf: (angle) => {
-        //console.log(angle);
-        return Math.cos(angle);
-      },
-      sinf(angle) {
-        console.log("sin", angle);
-        return Math.sin(angle);
-      },
+      cosf: Math.cos,
+      sinf: Math.sin,
       malloc(bytes_size) {
         const {memory, __heap_base} = w.instance.exports;
         const free_memory_size = memory.buffer.byteLength - __heap_base;
         if (bytes_size > free_memory_size) {
-          throw new Error("Buy a ram!");
+          const bytes_needed = bytes_size - free_memory_size;
+          const pages = Math.ceil(bytes_needed / PAGE_SIZE);
+          memory.grow(pages);
         }
 
         allocated_memory_size = bytes_size;
-
         return __heap_base;
       },
       free() {},
+      memcpy(dest, src, size) {
+        const {buffer} = wasm.instance.exports.memory;
+        const dest_buffer = new Uint8ClampedArray(buffer, dest, size);
+        const src_buffer  = new Uint8ClampedArray(buffer, src, size);
+
+        for (let i = 0; i < size; ++i) {
+          dest_buffer[i] = src_buffer[i];
+        }
+      },
+      memset(dest, value, size) {
+        const {buffer} = wasm.instance.exports.memory;
+        const dest_buffer = new Uint8ClampedArray(buffer, dest, size);
+        for (let i = 0; i < size; ++i) {
+          dest_buffer[i] = value;
+        }
+      },
       assert(condition) {
         if (!condition) {
           throw new Error("Assert failed");
@@ -51,32 +61,30 @@ canvas.style.height = "100%";
     },
   });
   window.w = wasm;
-  wasm.instance.exports.memory.grow(30);
 
   const {
     create_canvas,
-    init_scene,
-    canvas_update,
-    canvas_render,
+    init_scene_2d,
+    canvas_update_2d,
+    canvas_render_2d,
+    init_scene_3d,
+    canvas_update_3d,
+    canvas_render_3d,
   } = wasm.instance.exports;
 
-  const nc = create_canvas(50, 50);
-  init_scene(nc);
-  canvas_render(nc);
+  const nc = create_canvas(canvas.width, canvas.height);
+  init_scene_2d(nc);
+  init_scene_3d(nc);
 
-  const dt = 1000/60;
+  let last_timestamp = 0;
+  requestAnimationFrame(function loop(timestamp) {
+    const dt = (timestamp - last_timestamp) * 0.001;
+    last_timestamp = timestamp;
 
-  canvas.addEventListener("click", () => {
-    canvas_update(nc, dt)
-    canvas_render(nc);
+    canvas_update_3d(nc, dt);
+    canvas_render_3d(nc);
+
+    requestAnimationFrame(loop);
   });
-
-  //let last_timestamp = 0;
-  //requestAnimationFrame(function loop(timestamp) {
-  //  const dt = timestamp - last_timestamp;
-  //  last_timestamp = timestamp;
-
-  //  requestAnimationFrame(loop);
-  //});
 
 })();
