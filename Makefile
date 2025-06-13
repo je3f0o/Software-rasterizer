@@ -1,7 +1,9 @@
 CC        = clang
 CFLAGS    = -Wall -Wextra -g
-LIBS      = -lm $(shell pkg-config --cflags --libs sdl2)
+LD_LIBS   = -lm $(shell pkg-config --libs sdl2)
 HEADERS   = -I./include
+
+SDL2_FLAGS = $(shell pkg-config --cflags sdl2)
 
 WEB_DIR          = web
 WASM_BUILD_DIR   = build/wasm
@@ -12,7 +14,7 @@ run: rasterizer
 	#./rasterizer && feh --auto-zoom image.png
 
 rasterizer: $(NATIVE_BUILD_DIR)/main.o $(NATIVE_BUILD_DIR)/lib.o $(NATIVE_BUILD_DIR)/stb_image_write.o
-	$(CC) $(CFLAGS) $(HEADERS) $(LIBS) $^ -o $@
+	$(CC) $(CFLAGS) $(HEADERS) $(LD_LIBS) $^ -o $@
 
 wasm: $(WEB_DIR)/lib.wasm
 
@@ -25,7 +27,7 @@ $(NATIVE_BUILD_DIR)/stb_image_write.o: include/stb_image_write.h
 
 $(NATIVE_BUILD_DIR)/%.o: src/%.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(HEADERS) $(LIBS) -c $^ -o $@
+	$(CC) $(CFLAGS) $(HEADERS) $(SDL2_FLAGS) -c $^ -o $@
 
 $(WASM_BUILD_DIR)/%.o: src/%.c
 	mkdir -p $(dir $@)

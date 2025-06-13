@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-06-11
+ * Updated at  : 2025-06-13
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -10,19 +10,22 @@
 #include <stdbool.h>
 
 #if !defined(__wasm__) || !defined(__wasm32__)
-//#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #endif
 
-//static int pixels_data[800*600];
-
 Canvas* create_canvas(u32 width, u32 height) {
-  Canvas* canvas = malloc(sizeof(Canvas));
+  size_t color_buffer_size = sizeof(u32)   * width * height;
+  size_t depth_buffer_size = sizeof(float) * width * height;
+  size_t buffer_size = sizeof(Canvas) + color_buffer_size + depth_buffer_size;
+
+  u8* buffer = malloc(buffer_size);
+  Canvas* canvas       = (Canvas*)buffer;
   canvas->width        = width;
   canvas->height       = height;
-  canvas->color_buffer = malloc(sizeof(u32)   * canvas->width * canvas->height);
-  canvas->depth_buffer = malloc(sizeof(float) * canvas->width * canvas->height);
+  canvas->color_buffer = (i32*)&buffer[sizeof(Canvas)];
+  canvas->depth_buffer = (float*)&buffer[sizeof(Canvas) + color_buffer_size];
+
   return canvas;
 }
 
@@ -85,33 +88,36 @@ void canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]) {
     int w0 = w0_row;
     int w1 = w1_row;
     int w2 = w2_row;
-    for (int x = min_x; x <= max_x; ++x) {
-      if ((w0 | w1 | w2) > 0) {
-        float r0 = w0 / area;
-        float r1 = w1 / area;
-        float r2 = 1 - r0 - r1;
+    if (y >= 0 && y < canvas->height) {
+      for (int x = min_x; x <= max_x; ++x) {
+        bool is_inside = x >= 0 && x < canvas->width;
+        if (is_inside && (w0 | w1 | w2) > 0) {
+          float r0 = w0 / area;
+          float r1 = w1 / area;
+          float r2 = 1 - r0 - r1;
 
-        int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
-        int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
-        int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
-        int a = 0xFF;
+          int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
+          int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
+          int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
+          int a = 0xFF;
 
-        // Clamp to 0–255
-        r = CLAMP(r, 0, 255);
-        g = CLAMP(g, 0, 255);
-        b = CLAMP(b, 0, 255);
+          // Clamp to 0–255
+          r = CLAMP(r, 0, 255);
+          g = CLAMP(g, 0, 255);
+          b = CLAMP(b, 0, 255);
 
-        int color = 0;
-        color = (color | (a & 0xFF)) << 8;
-        color = (color | (b & 0xFF)) << 8;
-        color = (color | (g & 0xFF)) << 8;
-        color = (color | (r & 0xFF));
+          int color = 0;
+          color = (color | (a & 0xFF)) << 8;
+          color = (color | (b & 0xFF)) << 8;
+          color = (color | (g & 0xFF)) << 8;
+          color = (color | (r & 0xFF));
 
-        canvas_put_pixel(canvas, x, y, color);
+          canvas_put_pixel(canvas, x, y, color);
+        }
+        w0 += delta_v0_col;
+        w1 += delta_v1_col;
+        w2 += delta_v2_col;
       }
-      w0 += delta_v0_col;
-      w1 += delta_v1_col;
-      w2 += delta_v2_col;
     }
     w0_row += delta_v0_row;
     w1_row += delta_v1_row;
@@ -171,39 +177,43 @@ void canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]) {
     int w0 = w0_row;
     int w1 = w1_row;
     int w2 = w2_row;
-    for (int x = min_x; x <= max_x; ++x) {
-      if ((w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0)) {
-        float r0 = w0 / area;
-        float r1 = w1 / area;
-        float r2 = 1 - r0 - r1;
+    if (y >= 0 && y < canvas->height) {
+      for (int x = min_x; x <= max_x; ++x) {
+        bool is_inside = (
+          (w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0)
+        );
+        if (is_inside && x >= 0 && x < canvas->width) {
+          float r0 = w0 / area;
+          float r1 = w1 / area;
+          float r2 = 1 - r0 - r1;
 
-        float z = z0*r0 + z1*r1 + z2*r2;
-        u32 index = y * canvas->height + x;
-        if (z > canvas->depth_buffer[index]) {
-          canvas->depth_buffer[index] = z;
+          const float z     = z0*r0 + z1*r1 + z2*r2;
+          const u32   index = y * canvas->width + x;
+          if (z > canvas->depth_buffer[index]) {
+            int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
+            int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
+            int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
+            int a = 0xFF;
 
-          int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
-          int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
-          int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
-          int a = 0xFF;
+            // Clamp to 0–255
+            r = CLAMP(r, 0, 255);
+            g = CLAMP(g, 0, 255);
+            b = CLAMP(b, 0, 255);
 
-          // Clamp to 0–255
-          r = CLAMP(r, 0, 255);
-          g = CLAMP(g, 0, 255);
-          b = CLAMP(b, 0, 255);
+            int color = 0;
+            color = (color | (a & 0xFF)) << 8;
+            color = (color | (b & 0xFF)) << 8;
+            color = (color | (g & 0xFF)) << 8;
+            color = (color | (r & 0xFF));
 
-          int color = 0;
-          color = (color | (a & 0xFF)) << 8;
-          color = (color | (b & 0xFF)) << 8;
-          color = (color | (g & 0xFF)) << 8;
-          color = (color | (r & 0xFF));
-
-          canvas_put_pixel(canvas, x, y, color);
+            canvas->color_buffer[index] = color;
+            canvas->depth_buffer[index] = z;
+          }
         }
+        w0 += delta_v0_col;
+        w1 += delta_v1_col;
+        w2 += delta_v2_col;
       }
-      w0 += delta_v0_col;
-      w1 += delta_v1_col;
-      w2 += delta_v2_col;
     }
     w0_row += delta_v0_row;
     w1_row += delta_v1_row;
@@ -217,35 +227,18 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
   int max_x = MAX(rect.x, rect.x + rect.width);
   int max_y = MAX(rect.y, rect.y + rect.height);
 
-  bool is_rect_outside = (
-    max_x < 0 ||
-    max_y < 0 ||
-    min_x >= (i32)canvas->width ||
-    min_y >= (i32)canvas->height
-  );
-  if (is_rect_outside) return;
-
-  int offset_x = CLAMP(min_x, 0, (i32)canvas->width);
-  int offset_y = CLAMP(min_y, 0, (i32)canvas->height);
-
-  int width  = max_x - min_x;
-  int height = max_y - min_y;
-  if (min_x < 0) width  += min_x;
-  if (min_y < 0) height += min_y;
-
-  width  = MIN(width , (int)canvas->width  - offset_x);
-  height = MIN(height, (int)canvas->height - offset_y);
-
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      canvas_put_pixel(canvas, x+offset_x, y+offset_y, color);
+  for (int y = min_y; y < max_y; ++y) {
+    if (y >= 0 && y < canvas->height) {
+      for (int x = min_x; x < max_x; ++x) {
+        if (x >= 0 && x < canvas->width) canvas_put_pixel(canvas, x, y, color);
+      }
     }
   }
 }
 
 void canvas_clear(Canvas* canvas, int color) {
-  for (u32 y = 0; y < canvas->height; ++y) {
-    for (u32 x = 0; x < canvas->width; ++x) {
+  for (i32 y = 0; y < canvas->height; ++y) {
+    for (i32 x = 0; x < canvas->width; ++x) {
       canvas_put_pixel(canvas, x, y, color);
     }
   }

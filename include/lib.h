@@ -1,32 +1,41 @@
 #ifndef __JEEFO_LIB_H__
 #define __JEEFO_LIB_H__
 
+#include <stddef.h>
 #include <stdint.h>
 
 #if defined(__wasm__) || defined(__wasm32__)
 void* malloc(unsigned long size);
 void  free(void* ptr);
 int   abs(int j);
-#define NULL 0
-#else
-#include <stddef.h>
 #endif
+
+#ifndef NULL
+  #define NULL 0
+#endif
+#define null NULL
+
+#define MAX(a, b) (a > b ? a : b)
+#define MIN(a, b) (a < b ? a : b)
+#define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
+
+#define UNUSED(x) ((void)x)
+
+#define return_defer(value) do { \
+  result = value;                \
+  goto defer;                    \
+} while(0)
 
 typedef int        i32;
 typedef uint32_t   u32;
 typedef uint8_t    u8;
 
 typedef struct {
-  u32     width;
-  u32     height;
+  i32     width;
+  i32     height;
   i32*    color_buffer;
   float*  depth_buffer;
 } Canvas;
-
-#define MAX(a, b) (a > b ? a : b)
-#define MIN(a, b) (a < b ? a : b)
-
-#define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
 
 typedef struct {
   int x, y;
