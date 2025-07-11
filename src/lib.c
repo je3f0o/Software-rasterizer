@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-06-13
+ * Updated at  : 2025-07-12
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -227,6 +227,68 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
         if (x >= 0 && x < canvas->width) canvas_put_pixel(canvas, x, y, color);
       }
     }
+  }
+}
+
+void canvas_fill_circle(Canvas* canvas, Circle circle, i32 color) {
+  i32 r     = circle.radius;
+  i32 min_x = circle.x - r;
+  i32 min_y = circle.y - r;
+  i32 max_x = circle.x + r;
+  i32 max_y = circle.y + r;
+
+  i32 r2 = r*r;
+
+  for (i32 y = min_y; y < max_y; ++y) {
+    if (y >= 0 && y < canvas->height) {
+      for (i32 x = min_x; x < max_x; ++x) {
+        if (x >= 0 && x < canvas->width) {
+          i32 x1 = x - circle.x;
+          i32 y1 = y - circle.y;
+          if (x1*x1 + y1*y1 <= r2) {
+            canvas_put_pixel(canvas, x, y, color);
+          }
+        }
+      }
+    }
+  }
+}
+
+void canvas_stroke_circle(Canvas* canvas, Circle circle, i32 color) {
+  i32 r     = circle.radius;
+  i32 min_x = circle.x - r;
+  i32 min_y = circle.y - r;
+  i32 max_x = circle.x + r;
+  i32 max_y = circle.y + r;
+
+  canvas_put_pixel(canvas, min_x, circle.y, color);
+  canvas_put_pixel(canvas, max_x, circle.y, color);
+  canvas_put_pixel(canvas, circle.x, min_y, color);
+  canvas_put_pixel(canvas, circle.x, max_y, color);
+
+  i32 x = 0;
+  i32 y = circle.radius;
+
+  i32 decision_slope = 1 - r;
+
+  while (x < y) {
+    ++x;
+    if (decision_slope < 0) {
+      decision_slope += 2*x + 1;
+    } else {
+      --y;
+      decision_slope += 2*x - 2*y + 1;
+    }
+
+    canvas_put_pixel(canvas, x + circle.x, y + circle.y, color);
+    canvas_put_pixel(canvas, x + circle.x, circle.y - y, color);
+    canvas_put_pixel(canvas, circle.x - x, y + circle.y, color);
+    canvas_put_pixel(canvas, circle.x - x, circle.y - y, color);
+
+    canvas_put_pixel(canvas, y + circle.x, x + circle.y, color);
+    canvas_put_pixel(canvas, y + circle.x, circle.y - x, color);
+    canvas_put_pixel(canvas, circle.x - y, x + circle.y, color);
+    canvas_put_pixel(canvas, circle.x - y, circle.y - x, color);
   }
 }
 

@@ -46,34 +46,36 @@ float sinf(float);
 #define GREEN  0xFF00FF00
 #define BLUE   0xFFFF0000
 
-typedef int        i32;
+typedef int32_t    i32;
 typedef uint32_t   u32;
 typedef uint8_t    u8;
+typedef float      f32;
+typedef double     f64;
 
 typedef struct {
-  i32     width;
-  i32     height;
-  i32*    color_buffer;
-  float*  depth_buffer;
+  i32   width;
+  i32   height;
+  i32*  color_buffer;
+  f32*  depth_buffer;
 } Canvas;
 
 typedef struct {
-  int x, y;
+  i32 x, y;
 } vec2i;
 
 typedef struct {
-  float x, y;
+  f32 x, y;
 } vec2;
 
 typedef struct {
-  float x, y, z;
+  f32 x, y, z;
 } vec3;
 
 typedef struct {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-  uint8_t a;
+  u8 r;
+  u8 g;
+  u8 b;
+  u8 a;
 } Color;
 
 typedef struct {
@@ -87,18 +89,25 @@ typedef struct {
 } Vertex3D;
 
 typedef struct {
-  int x, y;
-  int width;
-  int height;
+  i32 x, y;
+  i32 width;
+  i32 height;
 } Rect;
+
+typedef struct {
+  i32 x, y;
+  u32 radius;
+} Circle;
 
 Canvas*  create_canvas(u32 width, u32 height);
 void     destroy_canvas(Canvas* canvas);
 
-void   canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]);
-void   canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]);
-void   canvas_fill_rect(Canvas* canvas, Rect rect, int color);
-void   canvas_clear(Canvas* canvas, int color);
+void  canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]);
+void  canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]);
+void  canvas_fill_rect(Canvas* canvas, Rect rect, i32 color);
+void  canvas_fill_circle(Canvas* canvas, Circle circle, i32 color);
+void  canvas_stroke_circle(Canvas* canvas, Circle circle, i32 color);
+void  canvas_clear(Canvas* canvas, i32 color);
 
 u32   canvas_width(Canvas* canvas);
 u32   canvas_height(Canvas* canvas);
