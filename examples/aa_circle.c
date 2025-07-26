@@ -1,6 +1,6 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
- * File Name   : 2d_triangle.c
- * Created at  : 2025-06-13
+ * File Name   : aa_circle.c
+ * Created at  : 2025-07-11
  * Updated at  : 2025-07-27
  * Author      : jeefo
  * Purpose     :
@@ -23,31 +23,8 @@ int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *
 
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 800
-#define CANVAS_WIDTH  WINDOW_WIDTH
-#define CANVAS_HEIGHT WINDOW_HEIGHT
-
-// 2D scene buffers
-Vertex2D vertices_2d[] = {
-  { {0, 0} , RED },
-  { {0, 0} , GREEN },
-  { {0, 0} , BLUE },
-};
-Vertex2D dest_vertices_2d[3] = {0};
-
-void vec2_rotate_at(vec2i* dest, vec2i* p, vec2i pivot, float angle) {
-  float c = cosf(angle);
-  float s = sinf(angle);
-  float px = p->x - pivot.x;
-  float py = p->y - pivot.y;
-  float x = c*px - s*py;
-  float y = s*px + c*py;
-  dest->x = (int)x + pivot.x;
-  dest->y = (int)y + pivot.y;
-}
-
-float radians(float degrees) {
-  return degrees * M_PIf/180.0;
-}
+#define CANVAS_WIDTH  100
+#define CANVAS_HEIGHT 100
 
 void canvas_present(Canvas* canvas) {
   assert(canvas != null);
@@ -58,25 +35,24 @@ void canvas_present(Canvas* canvas) {
 }
 
 void init_scene(Canvas* canvas) {
-  vertices_2d[0].position = (vec2i) {canvas->width*0.5, canvas->height*0.1};
-  vertices_2d[1].position = (vec2i) {canvas->width*0.9, canvas->height*0.9};
-  vertices_2d[2].position = (vec2i) {canvas->width*0.1, canvas->height*0.9};
-
-  memcpy(dest_vertices_2d, vertices_2d, sizeof(vertices_2d));
+  UNUSED(canvas);
 }
 
 void canvas_update(Canvas* canvas, double dt) {
-  static float angle = 0;
-  angle += radians(10*dt);
-  vec2i center = {canvas->width*0.5, canvas->height*0.5};
-  for (u32 i = 0; i < ARRAY_LENGTH(vertices_2d); ++i) {
-    vec2_rotate_at(&dest_vertices_2d[i].position, &vertices_2d[i].position, center, angle);
-  }
+  UNUSED(dt);
+  UNUSED(canvas);
 }
 
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
-  canvas_fill_triangle_2d(canvas, dest_vertices_2d);
+
+  u32 r = MIN(canvas->width, canvas->height) / 3;
+
+  canvas_fill_circle(canvas, (Circle) {
+    .x      = canvas->width  / 2,
+    .y      = canvas->height / 2,
+    .radius = r,
+  }, BLUE);
 
   canvas_present(canvas);
 }
@@ -93,7 +69,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("2D triangle rasterizer",
+  window = SDL_CreateWindow("Anti aliased circle",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,
@@ -140,7 +116,12 @@ int main(void) {
       memcpy(pixels, canvas->color_buffer, canvas->width*canvas->height*4);
       SDL_UnlockTexture(framebuffer);
     }
-    SDL_RenderCopy(renderer, framebuffer, null, null);
+
+    SDL_Rect rect = {
+      .w = canvas->width,
+      .h = canvas->height,
+    };
+    SDL_RenderCopy(renderer, framebuffer, &rect, null);
     SDL_RenderPresent(renderer);
 
     SDL_Delay(16);

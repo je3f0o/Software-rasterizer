@@ -25,12 +25,18 @@ float sinf(float);
 #endif
 #define null NULL
 
+#ifndef AA
+  #define AA 2
+#endif
+
 #ifndef M_PIf
   #define M_PIf	3.14159265358979323846f
 #endif
 #define MAX(a, b) (a > b ? a : b)
 #define MIN(a, b) (a < b ? a : b)
 #define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
+
+#define INLINE static inline
 
 #define UNUSED(x) ((void)x)
 
@@ -41,10 +47,11 @@ float sinf(float);
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
-#define GRAY   0xFF181818
-#define RED    0xFF0000FF
-#define GREEN  0xFF00FF00
-#define BLUE   0xFFFF0000
+#define GRAY   (Color){.raw = 0xFF181818}
+#define RED    (Color){.raw = 0xFF0000FF}
+#define GREEN  (Color){.raw = 0xFF00FF00}
+#define BLUE   (Color){.raw = 0xFFFF0000}
+#define PURPLE (Color){.raw = 0xFFFF00FF}
 
 typedef int32_t    i32;
 typedef uint32_t   u32;
@@ -71,11 +78,14 @@ typedef struct {
   f32 x, y, z;
 } vec3;
 
-typedef struct {
-  u8 r;
-  u8 g;
-  u8 b;
-  u8 a;
+typedef union {
+  struct {
+    u8 r;
+    u8 g;
+    u8 b;
+    u8 a;
+  } rgba;
+  i32 raw;
 } Color;
 
 typedef struct {
@@ -102,12 +112,14 @@ typedef struct {
 Canvas*  create_canvas(u32 width, u32 height);
 void     destroy_canvas(Canvas* canvas);
 
+Color blend_color(Color bg, Color fg);
+
 void  canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]);
 void  canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]);
-void  canvas_fill_rect(Canvas* canvas, Rect rect, i32 color);
-void  canvas_fill_circle(Canvas* canvas, Circle circle, i32 color);
-void  canvas_stroke_circle(Canvas* canvas, Circle circle, i32 color);
-void  canvas_clear(Canvas* canvas, i32 color);
+void  canvas_fill_rect(Canvas* canvas, Rect rect, Color color);
+void  canvas_fill_circle(Canvas* canvas, Circle circle, Color color);
+void  canvas_stroke_circle(Canvas* canvas, Circle circle, Color color);
+void  canvas_clear(Canvas* canvas, Color color);
 
 u32   canvas_width(Canvas* canvas);
 u32   canvas_height(Canvas* canvas);

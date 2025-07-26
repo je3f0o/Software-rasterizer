@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : 3d_triangle.c
  * Created at  : 2025-06-13
- * Updated at  : 2025-06-13
+ * Updated at  : 2025-07-27
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -22,13 +22,13 @@ int stbi_write_png(char const *filename, int w, int h, int comp, const void  *da
 #define CANVAS_HEIGHT WINDOW_HEIGHT
 
 Vertex3D vertices[] = {
-  { {0, 0, 0} , {255,   0,   0, 255} },
-  { {0, 0, 0} , {  0, 255,   0, 255} },
-  { {0, 0, 0} , {  0,   0, 255, 255} },
+  { {0, 0, 0 } , RED   } ,
+  { {0, 0, 0 } , GREEN } ,
+  { {0, 0, 0 } , BLUE  } ,
 
-  { {0, 0, 0} , {255,   0,   0, 255} },
-  { {0, 0, 0} , {  0, 255,   0, 255} },
-  { {0, 0, 0} , {  0,   0, 255, 255} },
+  { {0, 0, 0 } , RED   } ,
+  { {0, 0, 0 } , GREEN } ,
+  { {0, 0, 0 } , BLUE  } ,
 };
 Vertex3D dest_vertices[6] = {0};
 

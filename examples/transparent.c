@@ -1,5 +1,5 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
- * File Name   : 2d_triangle.c
+ * File Name   : transparent.c
  * Created at  : 2025-06-13
  * Updated at  : 2025-07-27
  * Author      : jeefo
@@ -26,23 +26,46 @@ int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *
 #define CANVAS_WIDTH  WINDOW_WIDTH
 #define CANVAS_HEIGHT WINDOW_HEIGHT
 
-// 2D scene buffers
-Vertex2D vertices_2d[] = {
-  { {0, 0} , RED },
-  { {0, 0} , GREEN },
-  { {0, 0} , BLUE },
-};
-Vertex2D dest_vertices_2d[3] = {0};
+// 3D scene buffers
+Vertex3D vertices[] = {
+  { {0, 0, 0 } , RED   } ,
+  { {0, 0, 0 } , GREEN } ,
+  { {0, 0, 0 } , BLUE  } ,
 
-void vec2_rotate_at(vec2i* dest, vec2i* p, vec2i pivot, float angle) {
+  { {0, 0, 0 } , RED   } ,
+  { {0, 0, 0 } , GREEN } ,
+  { {0, 0, 0 } , BLUE  } ,
+};
+Vertex3D dest_vertices[6] = {0};
+
+Circle circle = {
+  .x      = CANVAS_WIDTH / 2,
+  .y      = CANVAS_HEIGHT / 2,
+  .radius = CANVAS_WIDTH / 8,
+};
+
+Color semiblue = {
+  .rgba = {
+    .b = 255,
+    .a = 180,
+  }
+};
+
+void vec3_rotate_y_at(vec3* dest, vec3* p, vec3 pivot, float angle) {
   float c = cosf(angle);
   float s = sinf(angle);
+
   float px = p->x - pivot.x;
-  float py = p->y - pivot.y;
-  float x = c*px - s*py;
-  float y = s*px + c*py;
-  dest->x = (int)x + pivot.x;
-  dest->y = (int)y + pivot.y;
+  float pz = p->z - pivot.z;
+
+  // Rotate around Y-axis
+  float x =  c * px + s * pz;
+  float z = -s * px + c * pz;
+
+  // Translate back to world space
+  dest->x = x + pivot.x;
+  dest->y = p->y;
+  dest->z = z + pivot.z;
 }
 
 float radians(float degrees) {
@@ -58,25 +81,61 @@ void canvas_present(Canvas* canvas) {
 }
 
 void init_scene(Canvas* canvas) {
-  vertices_2d[0].position = (vec2i) {canvas->width*0.5, canvas->height*0.1};
-  vertices_2d[1].position = (vec2i) {canvas->width*0.9, canvas->height*0.9};
-  vertices_2d[2].position = (vec2i) {canvas->width*0.1, canvas->height*0.9};
+  UNUSED(canvas);
+  float z = 1.25;
 
-  memcpy(dest_vertices_2d, vertices_2d, sizeof(vertices_2d));
+  vertices[0].position = (vec3) {-0.5, -0.5, z};
+  vertices[1].position = (vec3) {   0,  0.5, z};
+  vertices[2].position = (vec3) {+0.5, -0.5, z};
+
+  vec3 pivot = {0, 0, z};
+  for (size_t i = 0; i < 3; ++i) {
+    vec3_rotate_y_at(&vertices[i+3].position, &vertices[i].position, pivot, radians(-90));
+  }
+
+  memcpy(dest_vertices, vertices, sizeof(vertices));
 }
 
 void canvas_update(Canvas* canvas, double dt) {
+  UNUSED(canvas);
   static float angle = 0;
   angle += radians(10*dt);
-  vec2i center = {canvas->width*0.5, canvas->height*0.5};
-  for (u32 i = 0; i < ARRAY_LENGTH(vertices_2d); ++i) {
-    vec2_rotate_at(&dest_vertices_2d[i].position, &vertices_2d[i].position, center, angle);
+  vec3 center = {0, 0, vertices[0].position.z};
+
+  for (u32 i = 0; i < ARRAY_LENGTH(vertices); ++i) {
+    vec3_rotate_y_at(&dest_vertices[i].position, &vertices[i].position, center, angle);
+  }
+
+  static i32 vx = 4;
+  static i32 vy = 2;
+
+  i32 r = circle.radius;
+
+  circle.x += vx;
+  circle.y += vy;
+  if (circle.x + r >= canvas->width) {
+    circle.x = canvas->width - r;
+    vx *= -1;
+  } else if (circle.x - (i32)circle.radius <= 0) {
+    circle.x = r;
+    vx *= -1;
+  }
+
+  if (circle.y + r >= canvas->height) {
+    circle.y = canvas->height - r;
+    vy *= -1;
+  } else if (circle.y - (i32)circle.radius <= 0) {
+    circle.y = r;
+    vy *= -1;
   }
 }
 
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
-  canvas_fill_triangle_2d(canvas, dest_vertices_2d);
+  canvas_fill_triangle_3d(canvas, dest_vertices);
+  canvas_fill_triangle_3d(canvas, &dest_vertices[3]);
+
+  canvas_fill_circle(canvas, circle, semiblue);
 
   canvas_present(canvas);
 }
@@ -93,7 +152,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("2D triangle rasterizer",
+  window = SDL_CreateWindow("Transparent color blend",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,

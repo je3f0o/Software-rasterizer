@@ -1,12 +1,13 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-07-12
+ * Updated at  : 2025-07-27
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 #include "lib.h"
+#include <stdio.h>
 
 Canvas* create_canvas(u32 width, u32 height) {
   size_t color_buffer_size = sizeof(u32)   * width * height;
@@ -27,15 +28,16 @@ void destroy_canvas(Canvas* canvas) {
   free(canvas);
 }
 
-static int cross_edge(vec2i a, vec2i b, vec2i p) {
+INLINE int cross_edge(vec2i a, vec2i b, vec2i p) {
   vec2i ab = {b.x - a.x, b.y - a.y};
   vec2i ap = {p.x - a.x, p.y - a.y};
 
   return ab.x * ap.y - ab.y * ap.x;
 }
 
-static inline void canvas_put_pixel(Canvas* canvas, u32 x, u32 y, int color) {
-  canvas->color_buffer[y * canvas->width + x] = color;
+INLINE void canvas_put_pixel(Canvas* canvas, u32 x, u32 y, Color color) {
+  Color bg = {.raw = canvas->color_buffer[y * canvas->width + x]};
+  canvas->color_buffer[y * canvas->width + x] = blend_color(bg, color).raw;
 }
 
 //static float lerp(float v0, float v1, float t) {
@@ -90,21 +92,18 @@ void canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]) {
           float r1 = w1 / area;
           float r2 = 1 - r0 - r1;
 
-          int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
-          int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
-          int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
-          int a = 0xFF;
+          int r = r0 * triangle[0].color.rgba.r + r1 * triangle[1].color.rgba.r + r2 * triangle[2].color.rgba.r;
+          int g = r0 * triangle[0].color.rgba.g + r1 * triangle[1].color.rgba.g + r2 * triangle[2].color.rgba.g;
+          int b = r0 * triangle[0].color.rgba.b + r1 * triangle[1].color.rgba.b + r2 * triangle[2].color.rgba.b;
 
-          // Clamp to 0–255
-          r = CLAMP(r, 0, 255);
-          g = CLAMP(g, 0, 255);
-          b = CLAMP(b, 0, 255);
-
-          int color = 0;
-          color = (color | (a & 0xFF)) << 8;
-          color = (color | (b & 0xFF)) << 8;
-          color = (color | (g & 0xFF)) << 8;
-          color = (color | (r & 0xFF));
+          Color color = {
+            .rgba = {
+              .r = CLAMP(r, 0, 255),
+              .g = CLAMP(g, 0, 255),
+              .b = CLAMP(b, 0, 255),
+              .a = 0xFF,
+            }
+          };
 
           canvas_put_pixel(canvas, x, y, color);
         }
@@ -184,9 +183,9 @@ void canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]) {
           const float z     = z0*r0 + z1*r1 + z2*r2;
           const u32   index = y * canvas->width + x;
           if (z > canvas->depth_buffer[index]) {
-            int r = r0 * triangle[0].color.r + r1 * triangle[1].color.r + r2 * triangle[2].color.r;
-            int g = r0 * triangle[0].color.g + r1 * triangle[1].color.g + r2 * triangle[2].color.g;
-            int b = r0 * triangle[0].color.b + r1 * triangle[1].color.b + r2 * triangle[2].color.b;
+            int r = r0 * triangle[0].color.rgba.r + r1 * triangle[1].color.rgba.r + r2 * triangle[2].color.rgba.r;
+            int g = r0 * triangle[0].color.rgba.g + r1 * triangle[1].color.rgba.g + r2 * triangle[2].color.rgba.g;
+            int b = r0 * triangle[0].color.rgba.b + r1 * triangle[1].color.rgba.b + r2 * triangle[2].color.rgba.b;
             int a = 0xFF;
 
             // Clamp to 0–255
@@ -215,7 +214,7 @@ void canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]) {
   }
 }
 
-void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
+void canvas_fill_rect(Canvas* canvas, Rect rect, Color color) {
   int min_x = MIN(rect.x, rect.x + rect.width);
   int min_y = MIN(rect.y, rect.y + rect.height);
   int max_x = MAX(rect.x, rect.x + rect.width);
@@ -230,7 +229,8 @@ void canvas_fill_rect(Canvas* canvas, Rect rect, int color) {
   }
 }
 
-void canvas_fill_circle(Canvas* canvas, Circle circle, i32 color) {
+#if AA <= 1
+INLINE void fill_circle_without_aa(Canvas* canvas, Circle circle, Color color) {
   i32 r     = circle.radius;
   i32 min_x = circle.x - r;
   i32 min_y = circle.y - r;
@@ -240,21 +240,76 @@ void canvas_fill_circle(Canvas* canvas, Circle circle, i32 color) {
   i32 r2 = r*r;
 
   for (i32 y = min_y; y < max_y; ++y) {
-    if (y >= 0 && y < canvas->height) {
-      for (i32 x = min_x; x < max_x; ++x) {
-        if (x >= 0 && x < canvas->width) {
-          i32 x1 = x - circle.x;
-          i32 y1 = y - circle.y;
-          if (x1*x1 + y1*y1 <= r2) {
-            canvas_put_pixel(canvas, x, y, color);
-          }
-        }
+    if (y < 0 || y >= canvas->height) continue;
+
+    for (i32 x = min_x; x < max_x; ++x) {
+      if (x < 0 || x >= canvas->width) continue;
+
+      i32 x1 = x - circle.x;
+      i32 y1 = y - circle.y;
+      if (x1*x1 + y1*y1 <= r2) {
+        canvas_put_pixel(canvas, x, y, color);
       }
     }
   }
 }
+#endif
 
-void canvas_stroke_circle(Canvas* canvas, Circle circle, i32 color) {
+#if AA > 1
+INLINE void fill_circle_aa(Canvas* canvas, Circle circle, Color color) {
+  i32 r     = circle.radius;
+  i32 min_x = circle.x - r;
+  i32 min_y = circle.y - r;
+  i32 max_x = circle.x + r;
+  i32 max_y = circle.y + r;
+
+  i32 aa_cx     = circle.x * AA;
+  i32 aa_cy     = circle.y * AA;
+  i32 aa_radius = r * AA;
+
+  i32 r2 = aa_radius*aa_radius;
+
+  for (i32 y = min_y; y < max_y; ++y) {
+    if (y < 0 || y >= canvas->height) continue;
+
+    for (i32 x = min_x; x < max_x; ++x) {
+      if (x < 0 || x >= canvas->width) continue;
+
+      i32 coverage = 0;
+      for (int sy = 0; sy < AA; ++sy) {
+        for (int sx = 0; sx < AA; ++sx) {
+          i32 aa_x = x * AA + sx;
+          i32 aa_y = y * AA + sy;
+
+          i32 dx = aa_x - aa_cx;
+          i32 dy = aa_y - aa_cy;
+
+          if (dx*dx + dy*dy <= r2) {
+            coverage++;
+          }
+        }
+      }
+
+      if (coverage > 0) {
+        float alpha = (float)coverage / (AA*AA);
+        Color col = color;
+        col.rgba.a *= alpha;
+        canvas_put_pixel(canvas, x, y, col);
+      }
+    }
+  }
+}
+#endif
+
+void canvas_fill_circle(Canvas* canvas, Circle circle, Color color) {
+#if AA > 1
+  fill_circle_aa(canvas, circle, color);
+#else
+  fill_circle_without_aa(canvas, circle, color);
+#endif
+}
+
+void canvas_stroke_circle(Canvas* canvas, Circle circle, Color color) {
   i32 r     = circle.radius;
   i32 min_x = circle.x - r;
   i32 min_y = circle.y - r;
@@ -292,7 +347,7 @@ void canvas_stroke_circle(Canvas* canvas, Circle circle, i32 color) {
   }
 }
 
-void canvas_clear(Canvas* canvas, int color) {
+void canvas_clear(Canvas* canvas, Color color) {
   for (i32 y = 0; y < canvas->height; ++y) {
     for (i32 x = 0; x < canvas->width; ++x) {
       canvas_put_pixel(canvas, x, y, color);
@@ -303,3 +358,24 @@ void canvas_clear(Canvas* canvas, int color) {
 
 u32 canvas_width(Canvas* canvas)  { return canvas->width; }
 u32 canvas_height(Canvas* canvas) { return canvas->height; }
+
+Color blend_color(Color bg, Color fg) {
+  if (fg.rgba.a == 0)   return bg;
+  if (fg.rgba.a == 255) return fg;
+
+  i32 alpha_factor = bg.rgba.a * (255 - fg.rgba.a) >> 8;
+  i32 alpha = fg.rgba.a + alpha_factor;
+
+  i32 red   = ((fg.rgba.r * fg.rgba.a) + (bg.rgba.r * alpha_factor)) / alpha;
+  i32 green = ((fg.rgba.g * fg.rgba.a) + (bg.rgba.g * alpha_factor)) / alpha;
+  i32 blue  = ((fg.rgba.b * fg.rgba.a) + (bg.rgba.b * alpha_factor)) / alpha;
+
+  return (Color) {
+    .rgba = {
+      .r = red,
+      .g = green,
+      .b = blue,
+      .a = alpha,
+    }
+  };
+}

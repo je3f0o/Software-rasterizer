@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : circle.c
  * Created at  : 2025-07-11
- * Updated at  : 2025-07-12
+ * Updated at  : 2025-07-27
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -26,12 +26,6 @@ int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *
 #define CANVAS_WIDTH  800
 #define CANVAS_HEIGHT 800
 
-#define GRAY   0xFF181818
-#define RED    0xFF0000FF
-#define GREEN  0xFF00FF00
-#define BLUE   0xFFFF0000
-#define PURPLE 0xFFFF00FF
-
 void canvas_present(Canvas* canvas) {
   assert(canvas != null);
 #if defined(__wasm__) || defined(__wasm32__) || defined(PLATFORM_IMAGE)
@@ -52,29 +46,11 @@ void canvas_update(Canvas* canvas, double dt) {
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
 
-  u32 r = MIN(canvas->width, canvas->height) / 8;
-
-  canvas_fill_circle(canvas, (Circle) {
-    .x      = canvas->width  / 4,
-    .y      = canvas->height / 4,
-    .radius = r,
-  }, RED);
-
-  canvas_fill_circle(canvas, (Circle) {
-    .x      = canvas->width  / 4 + canvas->width  / 2,
-    .y      = canvas->height / 4 + canvas->height / 2,
-    .radius = r,
-  }, BLUE);
+  u32 r = MIN(canvas->width, canvas->height) / 3;
 
   canvas_stroke_circle(canvas, (Circle) {
-    .x      = canvas->width  / 4 + canvas->width  / 2,
-    .y      = canvas->height / 4,
-    .radius = r,
-  }, GREEN);
-
-  canvas_stroke_circle(canvas, (Circle) {
-    .x      = canvas->width  / 4,
-    .y      = canvas->height / 4 + canvas->height / 2,
+    .x      = canvas->width  / 2,
+    .y      = canvas->height / 2,
     .radius = r,
   }, PURPLE);
 
@@ -93,7 +69,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("Circle",
+  window = SDL_CreateWindow("Mid point circle algorithm",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,
