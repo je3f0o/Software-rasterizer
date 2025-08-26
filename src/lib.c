@@ -1,13 +1,14 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-07-27
+ * Updated at  : 2025-08-26
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 #include "lib.h"
-#include <stdio.h>
+#include <math.h>
+//#include <stdio.h>
 
 Canvas* create_canvas(u32 width, u32 height) {
   size_t color_buffer_size = sizeof(u32)   * width * height;
@@ -378,4 +379,122 @@ Color blend_color(Color bg, Color fg) {
       .a = alpha,
     }
   };
+}
+
+INLINE void _draw_line_no_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
+  i32 x0             = p0.x;
+  i32 y0             = p0.y;
+  i32 x1             = p1.x;
+  i32 y1             = p1.y;
+  i32 delta_x        = abs(x1 - x0);
+  i32 delta_y        = -abs(y1 - y0); // intentionally negative
+  i32 step_x         = x0 < x1 ? 1 : -1;
+  i32 step_y         = y0 < y1 ? 1 : -1;
+  i32 decision_value = delta_x + delta_y;
+
+  while (x0 != x1 || y0 != y1) {
+    if (x0 >= 0 && x0 < canvas->width && y0 >= 0 && y0 < canvas->height) {
+      canvas_put_pixel(canvas, x0, y0, color);
+    }
+
+    i32 decision_value_doubled = decision_value * 2;
+    if (decision_value_doubled >= delta_y) {
+      x0             += step_x;
+      decision_value += delta_y;
+    }
+
+    if (decision_value_doubled <= delta_x) {
+      y0             += step_y;
+      decision_value += delta_x;
+    }
+  }
+}
+
+#define SWAP_I32(a, b) do { \
+  i32 temp = a; \
+  a = b; \
+  b = temp; \
+} while(0)
+
+INLINE void _draw_pixel(Canvas* c, i32 x, i32 y, Color color, float brightness) {
+  if (brightness == 0) return;
+  if (x < 0 || x > c->width || y < 0 || y > c->height) return;
+  if (brightness > 1) brightness = 1;
+
+  color.rgba.a = (u8)((float)color.rgba.a * brightness);
+  canvas_put_pixel(c, x, y, color);
+}
+
+INLINE void _draw_line_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
+  i32 x0 = p0.x;
+  i32 y0 = p0.y;
+  i32 x1 = p1.x;
+  i32 y1 = p1.y;
+
+  const bool steep = abs(y1 - y0) > abs(x1 - x0);
+  if (steep) {
+    SWAP_I32(x0, y0);
+    SWAP_I32(x1, y1);
+  }
+  if (x0 > x1) {
+    SWAP_I32(x0, x1);
+    SWAP_I32(y0, y1);
+  }
+
+  i32 dx = x1 - x0;
+  i32 dy = y1 - y0;
+
+  float gradiant = (dx == 0) ? 1 : dy / (float)dx;
+
+  float y = y0;
+  for (i32 x = x0; x < x1; ++x) {
+    i32   iy           = floor(y);
+    float fractional_y = y - iy;
+
+    if (steep) {
+      _draw_pixel(canvas, iy, x, color, 1.0 - fractional_y);
+      _draw_pixel(canvas, iy + 1, x, color, fractional_y);
+    } else {
+      _draw_pixel(canvas, x, iy, color, 1.0 - fractional_y);
+      _draw_pixel(canvas, x, iy + 1, color, fractional_y);
+    }
+
+    y += gradiant;
+  }
+}
+
+void _canvas_draw_line(Canvas* canvas, LineOptions args) {
+  vec2i p0    = args.p0;
+  vec2i p1    = args.p1;
+  Color color = args.color;
+  i32 x0 = p0.x;
+  i32 y0 = p0.y;
+  i32 x1 = p1.x;
+  i32 y1 = p1.y;
+
+  if (y0 == y1) {
+    for (i32 x = x0; x < x1; ++x) {
+      canvas_put_pixel(canvas, x, y0, color);
+    }
+    return;
+  }
+
+  if (x0 == x1) {
+    for (i32 y = y0; y < y1; ++y) {
+      canvas_put_pixel(canvas, x0, y, color);
+    }
+    return;
+  }
+
+  if (args.antialiased) {
+    _draw_line_aa(canvas, p0, p1, color);
+  } else {
+    _draw_line_no_aa(canvas, p0, p1, color);
+  }
+}
+
+void canvas_draw_lines(Canvas* canvas, LineOptions* lines, size_t count) {
+  for (size_t i = 0; i < count; ++i) {
+    canvas_draw_line(canvas, lines[i]);
+  }
 }

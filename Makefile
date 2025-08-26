@@ -15,7 +15,9 @@ NATIVE_BUILD_DIR = $(BUILD_DIR)/native
 
 STATIC_LIB = $(BUILD_DIR)/canvas.a
 
-EXAMPLES  = $(BIN_DIR)/transparent
+EXAMPLES  =
+EXAMPLES += $(BIN_DIR)/line
+EXAMPLES += $(BIN_DIR)/transparent
 EXAMPLES += $(BIN_DIR)/aa_circle
 EXAMPLES += $(BIN_DIR)/2d_triangle $(BIN_DIR)/3d_triangle $(BIN_DIR)/circle
 

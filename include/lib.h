@@ -40,6 +40,12 @@ float sinf(float);
 
 #define UNUSED(x) ((void)x)
 
+#define UNIMPLEMENTED(...) do { \
+  fprintf(stderr, "%s:%d: %s is not implemented yet\n", \
+          __FILE__, __LINE__, __func__); \
+  abort(); \
+} while(0)
+
 #define return_defer(value) do { \
   result = value;                \
   goto defer;                    \
@@ -114,15 +120,27 @@ void     destroy_canvas(Canvas* canvas);
 
 Color blend_color(Color bg, Color fg);
 
+u32   canvas_width(Canvas* canvas);
+u32   canvas_height(Canvas* canvas);
+void  canvas_clear(Canvas* canvas, Color color);
+
 void  canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]);
 void  canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]);
 void  canvas_fill_rect(Canvas* canvas, Rect rect, Color color);
 void  canvas_fill_circle(Canvas* canvas, Circle circle, Color color);
 void  canvas_stroke_circle(Canvas* canvas, Circle circle, Color color);
-void  canvas_clear(Canvas* canvas, Color color);
 
-u32   canvas_width(Canvas* canvas);
-u32   canvas_height(Canvas* canvas);
+typedef struct {
+  vec2i p0, p1;
+  Color color;
+  bool  antialiased;
+} LineOptions;
+
+void  _canvas_draw_line(Canvas* canvas, LineOptions options);
+#define canvas_draw_line(canvas, ...) \
+  _canvas_draw_line(canvas, (LineOptions)__VA_ARGS__)
+
+void  canvas_draw_lines(Canvas* canvas, LineOptions* lines, size_t count);
 
 vec2  project_3d_to_2d(vec3 p);
 vec2i project_2d_to_screen(Canvas* canvas, vec2 p);
