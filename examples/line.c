@@ -78,7 +78,7 @@ void canvas_render(Canvas* canvas) {
         .y = canvas->height / 2 - 10,
       },
       .p1 = {
-        .y = canvas->height - 10,
+        .y = canvas->height / 2.5 - 10,
       },
       .color = GREEN,
     },
@@ -89,7 +89,7 @@ void canvas_render(Canvas* canvas) {
         .y = canvas->height / 2,
       },
       .p1 = {
-        .y = canvas->height,
+        .y = canvas->height / 2.5,
       },
       .color       = PURPLE,
       .antialiased = true,
@@ -98,7 +98,7 @@ void canvas_render(Canvas* canvas) {
     // Steep lines
     (LineOptions){
       .p0 = {
-        .x = canvas->width / 5,
+        .x = canvas->width / 2.5,
       },
       .p1 = {
         .x = canvas->width / 2,
@@ -109,7 +109,7 @@ void canvas_render(Canvas* canvas) {
 
     (LineOptions){
       .p0 = {
-        .x = canvas->width / 5 + 10,
+        .x = canvas->width / 2.5 + 10,
       },
       .p1 = {
         .x = canvas->width / 2 + 10,
