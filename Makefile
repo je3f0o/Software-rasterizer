@@ -19,7 +19,9 @@ EXAMPLES  =
 EXAMPLES += $(BIN_DIR)/line
 EXAMPLES += $(BIN_DIR)/transparent
 EXAMPLES += $(BIN_DIR)/aa_circle
-EXAMPLES += $(BIN_DIR)/2d_triangle $(BIN_DIR)/3d_triangle $(BIN_DIR)/circle
+EXAMPLES += $(BIN_DIR)/2d_triangle
+EXAMPLES += $(BIN_DIR)/3d_triangle
+EXAMPLES += $(BIN_DIR)/circle
 
 #wasm: $(WEB_DIR)/lib.wasm
 
