@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-08-26
+ * Updated at  : 2025-09-05
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -29,9 +29,9 @@ void destroy_canvas(Canvas* canvas) {
   free(canvas);
 }
 
-INLINE int cross_edge(vec2i a, vec2i b, vec2i p) {
-  vec2i ab = {b.x - a.x, b.y - a.y};
-  vec2i ap = {p.x - a.x, p.y - a.y};
+INLINE int cross_edge(ivec2 a, ivec2 b, ivec2 p) {
+  ivec2 ab = {b.x - a.x, b.y - a.y};
+  ivec2 ap = {p.x - a.x, p.y - a.y};
 
   return ab.x * ap.y - ab.y * ap.x;
 }
@@ -45,17 +45,17 @@ INLINE void canvas_put_pixel(Canvas* canvas, u32 x, u32 y, Color color) {
 //  return v0 + t * (v1 - v0);
 //}
 
-bool is_top_left_edge(vec2i v0, vec2i v1) {
-  vec2i edge = {v1.x - v0.x, v1.y - v0.y};
+bool is_top_left_edge(ivec2 v0, ivec2 v1) {
+  ivec2 edge = {v1.x - v0.x, v1.y - v0.y};
   bool is_top_edge  = edge.y == 0 && edge.x > 0;
   bool is_left_edge = edge.y < 0;
   return is_top_edge || is_left_edge;
 }
 
 void canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]) {
-  vec2i v0 = triangle[0].position;
-  vec2i v1 = triangle[1].position;
-  vec2i v2 = triangle[2].position;
+  ivec2 v0 = triangle[0].position;
+  ivec2 v1 = triangle[1].position;
+  ivec2 v2 = triangle[2].position;
 
   float area = cross_edge(v0, v1, v2);
 
@@ -76,7 +76,7 @@ void canvas_fill_triangle_2d(Canvas* canvas, Vertex2D triangle[3]) {
   int bias1 = is_top_left_edge(v2, v0) ? -1 : 0;
   int bias2 = is_top_left_edge(v0, v1) ? -1 : 0;
 
-  vec2i p = {min_x, min_y};
+  ivec2 p = {min_x, min_y};
   int w0_row = cross_edge(v1, v2, p) + bias0;
   int w1_row = cross_edge(v2, v0, p) + bias1;
   int w2_row = cross_edge(v0, v1, p) + bias2;
@@ -124,8 +124,8 @@ vec2 project_3d_to_2d(vec3 p) {
   return (vec2) {p.x / p.z, p.y / p.z};
 }
 
-vec2i project_2d_to_screen(Canvas* canvas, vec2 p) {
-  return (vec2i) {
+ivec2 project_2d_to_screen(Canvas* canvas, vec2 p) {
+  return (ivec2) {
     (int)(((p.x+1)/2)     * canvas->width),
     (int)((1 - (p.y+1)/2) * canvas->height),
   };
@@ -135,9 +135,9 @@ void canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]) {
   vec2  v0f = project_3d_to_2d(triangle[0].position);
   vec2  v1f = project_3d_to_2d(triangle[1].position);
   vec2  v2f = project_3d_to_2d(triangle[2].position);
-  vec2i v0 = project_2d_to_screen(canvas, v0f);
-  vec2i v1 = project_2d_to_screen(canvas, v1f);
-  vec2i v2 = project_2d_to_screen(canvas, v2f);
+  ivec2 v0 = project_2d_to_screen(canvas, v0f);
+  ivec2 v1 = project_2d_to_screen(canvas, v1f);
+  ivec2 v2 = project_2d_to_screen(canvas, v2f);
 
   float z0 = 1.0 / triangle[0].position.z;
   float z1 = 1.0 / triangle[1].position.z;
@@ -162,7 +162,7 @@ void canvas_fill_triangle_3d(Canvas* canvas, Vertex3D triangle[3]) {
   int bias1 = is_top_left_edge(v2, v0) ? -1 : 0;
   int bias2 = is_top_left_edge(v0, v1) ? -1 : 0;
 
-  vec2i p = {min_x, min_y};
+  ivec2 p = {min_x, min_y};
   int w0_row = cross_edge(v1, v2, p) + bias0;
   int w1_row = cross_edge(v2, v0, p) + bias1;
   int w2_row = cross_edge(v0, v1, p) + bias2;
@@ -381,7 +381,7 @@ Color blend_color(Color bg, Color fg) {
   };
 }
 
-INLINE void _draw_line_no_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
+INLINE void _draw_line_no_aa(Canvas* canvas, ivec2 p0, ivec2 p1, Color color) {
   i32 x0             = p0.x;
   i32 y0             = p0.y;
   i32 x1             = p1.x;
@@ -425,7 +425,7 @@ INLINE void _draw_pixel(Canvas* c, i32 x, i32 y, Color color, float brightness) 
   canvas_put_pixel(c, x, y, color);
 }
 
-INLINE void _draw_line_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
+INLINE void _draw_line_aa(Canvas* canvas, ivec2 p0, ivec2 p1, Color color) {
   i32 x0 = p0.x;
   i32 y0 = p0.y;
   i32 x1 = p1.x;
@@ -447,7 +447,7 @@ INLINE void _draw_line_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
   float gradiant = (dx == 0) ? 1 : dy / (float)dx;
 
   float y = y0;
-  for (i32 x = x0; x < x1; ++x) {
+  for (i32 x = x0; x <= x1; ++x) {
     i32   iy           = floor(y);
     float fractional_y = y - iy;
 
@@ -463,9 +463,9 @@ INLINE void _draw_line_aa(Canvas* canvas, vec2i p0, vec2i p1, Color color) {
   }
 }
 
-void _canvas_draw_line(Canvas* canvas, LineOptions args) {
-  vec2i p0    = args.p0;
-  vec2i p1    = args.p1;
+void _canvas_draw_line(Canvas* canvas, Line args) {
+  ivec2 p0    = args.from;
+  ivec2 p1    = args.to;
   Color color = args.color;
   i32 x0 = p0.x;
   i32 y0 = p0.y;
@@ -473,14 +473,16 @@ void _canvas_draw_line(Canvas* canvas, LineOptions args) {
   i32 y1 = p1.y;
 
   if (y0 == y1) {
-    for (i32 x = x0; x < x1; ++x) {
+    if (x0 > x1) SWAP_I32(x0, x1);
+    for (i32 x = x0; x <= x1; ++x) {
       canvas_put_pixel(canvas, x, y0, color);
     }
     return;
   }
 
   if (x0 == x1) {
-    for (i32 y = y0; y < y1; ++y) {
+    if (y0 > y1) SWAP_I32(y0, y1);
+    for (i32 y = y0; y <= y1; ++y) {
       canvas_put_pixel(canvas, x0, y, color);
     }
     return;
@@ -493,7 +495,7 @@ void _canvas_draw_line(Canvas* canvas, LineOptions args) {
   }
 }
 
-void canvas_draw_lines(Canvas* canvas, LineOptions* lines, size_t count) {
+void canvas_draw_lines(Canvas* canvas, Line* lines, size_t count) {
   for (size_t i = 0; i < count; ++i) {
     canvas_draw_line(canvas, lines[i]);
   }

@@ -53,6 +53,8 @@ float sinf(float);
 
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
+#define BLACK  (Color){.raw = 0xFF000000}
+#define WHITE  (Color){.raw = 0xFFFFFFFF}
 #define GRAY   (Color){.raw = 0xFF181818}
 #define RED    (Color){.raw = 0xFF0000FF}
 #define GREEN  (Color){.raw = 0xFF00FF00}
@@ -74,7 +76,7 @@ typedef struct {
 
 typedef struct {
   i32 x, y;
-} vec2i;
+} ivec2;
 
 typedef struct {
   f32 x, y;
@@ -95,7 +97,7 @@ typedef union {
 } Color;
 
 typedef struct {
-  vec2i  position;
+  ivec2  position;
   Color  color;
 } Vertex2D;
 
@@ -131,18 +133,18 @@ void  canvas_fill_circle(Canvas* canvas, Circle circle, Color color);
 void  canvas_stroke_circle(Canvas* canvas, Circle circle, Color color);
 
 typedef struct {
-  vec2i p0, p1;
+  ivec2 from, to;
   Color color;
   bool  antialiased;
-} LineOptions;
+} Line;
 
-void  _canvas_draw_line(Canvas* canvas, LineOptions options);
+void  _canvas_draw_line(Canvas* canvas, Line args);
 #define canvas_draw_line(canvas, ...) \
-  _canvas_draw_line(canvas, (LineOptions)__VA_ARGS__)
+  _canvas_draw_line(canvas, (Line)__VA_ARGS__)
 
-void  canvas_draw_lines(Canvas* canvas, LineOptions* lines, size_t count);
+void  canvas_draw_lines(Canvas* canvas, Line* lines, size_t count);
 
 vec2  project_3d_to_2d(vec3 p);
-vec2i project_2d_to_screen(Canvas* canvas, vec2 p);
+ivec2 project_2d_to_screen(Canvas* canvas, vec2 p);
 
 #endif

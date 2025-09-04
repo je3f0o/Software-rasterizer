@@ -16,6 +16,7 @@ NATIVE_BUILD_DIR = $(BUILD_DIR)/native
 STATIC_LIB = $(BUILD_DIR)/canvas.a
 
 EXAMPLES  =
+EXAMPLES += $(BIN_DIR)/marching_squares
 EXAMPLES += $(BIN_DIR)/line
 EXAMPLES += $(BIN_DIR)/transparent
 EXAMPLES += $(BIN_DIR)/aa_circle

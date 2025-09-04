@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : 2d_triangle.c
  * Created at  : 2025-06-13
- * Updated at  : 2025-07-27
+ * Updated at  : 2025-09-05
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -34,7 +34,7 @@ Vertex2D vertices_2d[] = {
 };
 Vertex2D dest_vertices_2d[3] = {0};
 
-void vec2_rotate_at(vec2i* dest, vec2i* p, vec2i pivot, float angle) {
+void vec2_rotate_at(ivec2* dest, ivec2* p, ivec2 pivot, float angle) {
   float c = cosf(angle);
   float s = sinf(angle);
   float px = p->x - pivot.x;
@@ -58,9 +58,9 @@ void canvas_present(Canvas* canvas) {
 }
 
 void init_scene(Canvas* canvas) {
-  vertices_2d[0].position = (vec2i) {canvas->width*0.5, canvas->height*0.1};
-  vertices_2d[1].position = (vec2i) {canvas->width*0.9, canvas->height*0.9};
-  vertices_2d[2].position = (vec2i) {canvas->width*0.1, canvas->height*0.9};
+  vertices_2d[0].position = (ivec2) {canvas->width*0.5, canvas->height*0.1};
+  vertices_2d[1].position = (ivec2) {canvas->width*0.9, canvas->height*0.9};
+  vertices_2d[2].position = (ivec2) {canvas->width*0.1, canvas->height*0.9};
 
   memcpy(dest_vertices_2d, vertices_2d, sizeof(vertices_2d));
 }
@@ -68,7 +68,7 @@ void init_scene(Canvas* canvas) {
 void canvas_update(Canvas* canvas, double dt) {
   static float angle = 0;
   angle += radians(10*dt);
-  vec2i center = {canvas->width*0.5, canvas->height*0.5};
+  ivec2 center = {canvas->width*0.5, canvas->height*0.5};
   for (u32 i = 0; i < ARRAY_LENGTH(vertices_2d); ++i) {
     vec2_rotate_at(&dest_vertices_2d[i].position, &vertices_2d[i].position, center, angle);
   }

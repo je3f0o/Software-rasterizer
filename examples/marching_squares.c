@@ -1,5 +1,5 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
- * File Name   : line.c
+ * File Name   : marching_squares.c
  * Created at  : 2025-07-11
  * Updated at  : 2025-09-05
  * Author      : jeefo
@@ -23,8 +23,17 @@ int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *
 
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 800
-#define CANVAS_WIDTH  80
-#define CANVAS_HEIGHT 80
+#define CANVAS_WIDTH  800
+#define CANVAS_HEIGHT 800
+
+#define RES      20
+#define HALF_RES (RES / 2)
+
+struct {
+  u32    rows;
+  u32    cols;
+  float* data;
+} grid = {0};
 
 void canvas_present(Canvas* canvas) {
   assert(canvas != null);
@@ -34,8 +43,36 @@ void canvas_present(Canvas* canvas) {
 #endif
 }
 
+INLINE float rand01(void) {
+  return rand()/(float)RAND_MAX;
+}
+
+INLINE int is_rock(u32 x, u32 y) {
+  u32 index = y * grid.cols + x;
+  return grid.data[index] > 0.5 ? 1 : 0;
+}
+
+INLINE i32 get_state(int a, int b, int c, int d) {
+  return a*8 + b*4 + c*2 + d;
+}
+
 void init_scene(Canvas* canvas) {
   UNUSED(canvas);
+
+  srand(69);
+
+  u32 cols = canvas->width  / RES + 1;
+  u32 rows = canvas->height / RES + 1;
+
+  grid.rows = rows;
+  grid.cols = cols;
+  grid.data = malloc(rows*cols*sizeof(float));
+  for (u32 i = 0; i < rows; ++i) {
+    for (u32 j = 0; j < cols; ++j) {
+      u32 index = i*cols + j;
+      grid.data[index] = rand01();
+    }
+  }
 }
 
 void canvas_update(Canvas* canvas, double dt) {
@@ -46,81 +83,81 @@ void canvas_update(Canvas* canvas, double dt) {
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
 
-  Line lines[] = {
-    // X axis
-    (Line){
-      .from = {
-        .y = canvas->height / 2,
-      },
-      .to = {
-        .x = canvas->width,
-        .y = canvas->height / 2,
-      },
-      .color = RED,
-    },
+  Line   line   = {.color = WHITE, .antialiased = true};
+  Circle circle = {.radius = RES/5};
+  for (u32 y = 0; y < grid.rows; ++y) {
+    for (u32 x = 0; x < grid.cols; ++x) {
+      circle.x = x * RES;
+      circle.y = y * RES;
 
-    // Y axis
-    (Line){
-      .from = {
-        .x = canvas->width / 2,
-      },
-      .to = {
-        .x = canvas->width / 2,
-        .y = canvas->height / 5 * 4,
-      },
-      .color = BLUE,
-    },
+      Color color = is_rock(x, y) == 1 ? RED : GREEN;
+      canvas_fill_circle(canvas, circle, color);
 
-    // No steep lines
-    (Line){
-      .from = {
-        .x = canvas->width,
-        .y = canvas->height / 2 - 10,
-      },
-      .to = {
-        .y = canvas->height / 2.5 - 10,
-      },
-      .color = GREEN,
-    },
+      i32 tl = is_rock(x   , y);
+      i32 tr = is_rock(x+1 , y);
+      i32 br = is_rock(x+1 , y+1);
+      i32 bl = is_rock(x   , y+1);
 
-    (Line){
-      .from = {
-        .x = canvas->width,
-        .y = canvas->height / 2,
-      },
-      .to = {
-        .y = canvas->height / 2.5,
-      },
-      .color       = PURPLE,
-      .antialiased = true,
-    },
+      ivec2 top    = {(x+0) * RES + HALF_RES , (y+0) * RES            };
+      ivec2 left   = {(x+0) * RES            , (y+0) * RES + HALF_RES };
+      ivec2 right  = {(x+1) * RES            , (y+0) * RES + HALF_RES };
+      ivec2 bottom = {(x+0) * RES + HALF_RES , (y+1) * RES            };
 
-    // Steep lines
-    (Line){
-      .from = {
-        .x = canvas->width / 2.5,
-      },
-      .to = {
-        .x = canvas->width / 2,
-        .y = canvas->height,
-      },
-      .color = GREEN,
-    },
+      i32 state = get_state(tl, tr, br, bl);
+      if (state == 0 || state == 15) continue;
 
-    (Line){
-      .from = {
-        .x = canvas->width / 2.5 + 10,
-      },
-      .to = {
-        .x = canvas->width / 2 + 10,
-        .y = canvas->height,
-      },
-      .color       = PURPLE,
-      .antialiased = true,
-    },
-  };
+      switch (state) {
+        case 1:
+        case 14:
+          line.to   = bottom;
+          line.from = left;
+          break;
+        case 2:
+        case 13:
+          line.to   = bottom;
+          line.from = right;
+          break;
+        case 3:
+        case 12:
+          line.to   = left;
+          line.from = right;
+          break;
+        case 4:
+        case 11:
+          line.to   = top;
+          line.from = right;
+          break;
+        case 5:
+          line.to   = top;
+          line.from = left;
+          canvas_draw_line(canvas, line);
 
-  canvas_draw_lines(canvas, lines, ARRAY_LENGTH(lines));
+          line.to   = bottom;
+          line.from = right;
+          break;
+        case 6:
+        case 9:
+          line.to   = bottom;
+          line.from = top;
+          break;
+        case 7:
+        case 8:
+          line.to   = left;
+          line.from = top;
+          break;
+        case 10:
+          line.to   = bottom;
+          line.from = left;
+          canvas_draw_line(canvas, line);
+
+          line.to   = top;
+          line.from = right;
+          break;
+      }
+
+      canvas_draw_line(canvas, line);
+    }
+  }
 
   canvas_present(canvas);
 }
@@ -137,7 +174,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("Anti aliased on/off lines",
+  window = SDL_CreateWindow("Marching squares",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,
