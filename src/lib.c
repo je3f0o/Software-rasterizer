@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-09-05
+ * Updated at  : 2025-11-08
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -498,5 +498,73 @@ void _canvas_draw_line(Canvas* canvas, Line args) {
 void canvas_draw_lines(Canvas* canvas, Line* lines, size_t count) {
   for (size_t i = 0; i < count; ++i) {
     canvas_draw_line(canvas, lines[i]);
+  }
+}
+
+#define MAX_STACK_SIZE       32
+#define CURVE_TRESHOLD       1.0f
+#define CURVE_TRESHOLD_SQ    (CURVE_TRESHOLD*CURVE_TRESHOLD)
+
+typedef struct {
+  vec2  v0;
+  vec2  v1;
+  vec2  v2;
+} QuadraticLineSegment;
+
+void _canvas_draw_quadratic_curved_line(Canvas* canvas, QuadraticCurvedLine args) {
+  static QuadraticLineSegment stack[MAX_STACK_SIZE] = {0};
+  int stack_ptr = 0;
+
+  stack[stack_ptr++] = (QuadraticLineSegment) {
+    .v0 = args.v0, // Real curve point
+    .v1 = args.v1, // Control point
+    .v2 = args.v2, // Real curve point
+  };
+
+  while (stack_ptr > 0) {
+    QuadraticLineSegment curve = stack[--stack_ptr];
+
+    float dx      = curve.v2.x - curve.v0.x;
+    float dy      = curve.v2.y - curve.v0.y;
+    float sq_dist = 0;
+
+    if (dx != 0.0 || dy != 0.0) {
+      float px = curve.v1.x - curve.v0.x;
+      float py = curve.v1.y - curve.v0.y;
+      float t = (px*dx + py*dy) / (dx*dx + dy*dy);
+      t = CLAMP(t, 0, 1);
+      float closest_x = curve.v0.x + dx*t;
+      float closest_y = curve.v0.y + dy*t;
+      float cdx = curve.v1.x - closest_x;
+      float cdy = curve.v1.y - closest_y;
+      sq_dist = cdx*cdx + cdy*cdy;
+    }
+
+    if (sq_dist < CURVE_TRESHOLD_SQ || stack_ptr >= MAX_STACK_SIZE - 2) {
+      canvas_draw_line(canvas, {
+        .from        = {curve.v0.x, curve.v0.y},
+        .to          = {curve.v2.x, curve.v2.y},
+        .color       = args.color,
+        .antialiased = args.antialiased,
+      });
+      continue;
+    }
+
+    // Sibdivide
+    vec2 m1 = {(curve.v0.x + curve.v1.x) / 2.0f, (curve.v0.y + curve.v1.y) / 2.0f};
+    vec2 m2 = {(curve.v1.x + curve.v2.x) / 2.0f, (curve.v1.y + curve.v2.y) / 2.0f};
+    vec2 c  = {(m1.x + m2.x) / 2.0f, (m1.y + m2.y) / 2.0f};
+
+    stack[stack_ptr++] = (QuadraticLineSegment) {
+      .v0 = curve.v0,
+      .v1 = m1,
+      .v2 = c,
+    };
+
+    stack[stack_ptr++] = (QuadraticLineSegment) {
+      .v0 = c,
+      .v1 = m2,
+      .v2 = curve.v2,
+    };
   }
 }

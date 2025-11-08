@@ -144,6 +144,18 @@ void  _canvas_draw_line(Canvas* canvas, Line args);
 
 void  canvas_draw_lines(Canvas* canvas, Line* lines, size_t count);
 
+typedef struct {
+  vec2  v0;
+  vec2  v1;
+  vec2  v2;
+  Color color;
+  bool  antialiased;
+} QuadraticCurvedLine;
+
+void _canvas_draw_quadratic_curved_line(Canvas* canvas, QuadraticCurvedLine args);
+#define canvas_draw_quadratic_curved_line(canvas, ...) \
+  _canvas_draw_quadratic_curved_line(canvas, (QuadraticCurvedLine)__VA_ARGS__)
+
 vec2  project_3d_to_2d(vec3 p);
 ivec2 project_2d_to_screen(Canvas* canvas, vec2 p);
 
