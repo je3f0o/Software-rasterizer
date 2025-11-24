@@ -1,5 +1,5 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
- * File Name   : quadratic_curved_line.c
+ * File Name   : cubic_curved_line.c
  * Created at  : 2025-11-08
  * Updated at  : 2025-11-24
  * Author      : jeefo
@@ -46,7 +46,7 @@ typedef struct {
   Circle circle;
 } Point;
 
-static Point points[3]     = {0};
+static Point points[4]     = {0};
 static float t             = 0;
 static int   dragged_index = -1;
 static Color line_color    = (Color){.raw = 0xFF555555};
@@ -63,49 +63,28 @@ static int get_dragged_point_index(int x, int y) {
   return -1;
 }
 
-static void bezier_curve(Canvas* canvas) {
-  Circle circle = {.radius = 7};
-  int STEP = 100;
-  for (int i = 0; i < STEP; ++i) {
-    float t = (float)i/STEP;
-    float x1 = lerp(points[0].circle.x, points[1].circle.x, t);
-    float y1 = lerp(points[0].circle.y, points[1].circle.y, t);
-    float x2 = lerp(points[1].circle.x, points[2].circle.x, t);
-    float y2 = lerp(points[1].circle.y, points[2].circle.y, t);
-
-    canvas_draw_line(canvas, {
-      .from        = {x1, y1},
-      .to          = {x2, y2},
-      .color       = line_color,
-      .antialiased = true,
-    });
-
-    circle.x = x1;
-    circle.y = y1;
-    canvas_fill_circle(canvas, circle, line_color);
-    circle.x = x2;
-    circle.y = y2;
-    canvas_fill_circle(canvas, circle, line_color);
-  }
-}
-
 void init_scene(Canvas* canvas) {
   UNUSED(canvas);
   int radius = 10;
   points[0].color         = GREEN;
   points[0].circle.x      = canvas->width  * 0.1;
-  points[0].circle.y      = canvas->height * 0.9;
+  points[0].circle.y      = canvas->height * 0.6;
   points[0].circle.radius = radius;
 
   points[1].color         = BLUE;
-  points[1].circle.x      = canvas->width  * 0.5;
-  points[1].circle.y      = canvas->height * 0.1;
+  points[1].circle.x      = canvas->width  * 0.3;
+  points[1].circle.y      = canvas->height * 0.2;
   points[1].circle.radius = radius;
 
-  points[2].color         = RED;
-  points[2].circle.x      = canvas->width  * 0.9;
-  points[2].circle.y      = canvas->height * 0.9;
+  points[2].color         = BLUE;
+  points[2].circle.x      = canvas->width  * 0.7;
+  points[2].circle.y      = canvas->height * 0.8;
   points[2].circle.radius = radius;
+
+  points[3].color         = RED;
+  points[3].circle.x      = canvas->width  * 0.9;
+  points[3].circle.y      = canvas->height * 0.4;
+  points[3].circle.radius = radius;
 }
 
 void canvas_update(Canvas* canvas, double dt) {
@@ -114,34 +93,41 @@ void canvas_update(Canvas* canvas, double dt) {
 }
 
 void canvas_render(Canvas* canvas) {
-  UNUSED(bezier_curve);
   canvas_clear(canvas, GRAY);
 
   for (size_t i = 0; i < ARRAY_LENGTH(points) - 1; ++i) {
     canvas_draw_line(canvas, {
       .from        = {points[i+0].circle.x, points[i+0].circle.y},
       .to          = {points[i+1].circle.x, points[i+1].circle.y},
-      .color       = (Color){.raw = 0xFF555555},
+      .color       = line_color,
       .antialiased = true,
     });
   }
 
-  canvas_draw_quadratic_curved_line(canvas, {
+  canvas_draw_cubic_curved_line(canvas, {
     .p0          = {points[0].circle.x, points[0].circle.y},
     .p1          = {points[1].circle.x, points[1].circle.y},
     .p2          = {points[2].circle.x, points[2].circle.y},
+    .p3          = {points[3].circle.x, points[3].circle.y},
     .color       = PURPLE,
     .antialiased = true,
   });
 
   if (t > 0.0 && t < 1.0) {
-    Circle circle = {.radius = 7};
     float x1 = lerp(points[0].circle.x, points[1].circle.x, t);
     float y1 = lerp(points[0].circle.y, points[1].circle.y, t);
     float x2 = lerp(points[1].circle.x, points[2].circle.x, t);
     float y2 = lerp(points[1].circle.y, points[2].circle.y, t);
-    float x3 = lerp(x1, x2, t);
-    float y3 = lerp(y1, y2, t);
+    float x3 = lerp(points[2].circle.x, points[3].circle.x, t);
+    float y3 = lerp(points[2].circle.y, points[3].circle.y, t);
+
+    float x4 = lerp(x1, x2, t);
+    float y4 = lerp(y1, y2, t);
+    float x5 = lerp(x2, x3, t);
+    float y5 = lerp(y2, y3, t);
+
+    float final_x = lerp(x4, x5, t);
+    float final_y = lerp(y4, y5, t);
 
     canvas_draw_line(canvas, {
       .from        = {x1, y1},
@@ -149,7 +135,20 @@ void canvas_render(Canvas* canvas) {
       .color       = CYAN,
       .antialiased = true,
     });
+    canvas_draw_line(canvas, {
+      .from        = {x2, y2},
+      .to          = {x3, y3},
+      .color       = CYAN,
+      .antialiased = true,
+    });
+    canvas_draw_line(canvas, {
+      .from        = {x4, y4},
+      .to          = {x5, y5},
+      .color       = GREEN,
+      .antialiased = true,
+    });
 
+    Circle circle = {.radius = 7};
     circle.x = x1;
     circle.y = y1;
     canvas_fill_circle(canvas, circle, line_color);
@@ -158,7 +157,18 @@ void canvas_render(Canvas* canvas) {
     canvas_fill_circle(canvas, circle, line_color);
     circle.x = x3;
     circle.y = y3;
+    canvas_fill_circle(canvas, circle, line_color);
+
+    circle.x = x4;
+    circle.y = y4;
     canvas_fill_circle(canvas, circle, CYAN);
+    circle.x = x5;
+    circle.y = y5;
+    canvas_fill_circle(canvas, circle, CYAN);
+
+    circle.x = final_x;
+    circle.y = final_y;
+    canvas_fill_circle(canvas, circle, GREEN);
   }
 
   for (size_t i = 0; i < ARRAY_LENGTH(points); ++i) {
@@ -180,7 +190,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("Interactive quadratic curved line",
+  window = SDL_CreateWindow("Interactive cubic curved line",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,

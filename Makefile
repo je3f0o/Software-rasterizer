@@ -24,6 +24,8 @@ EXAMPLES += $(BIN_DIR)/2d_triangle
 EXAMPLES += $(BIN_DIR)/3d_triangle
 EXAMPLES += $(BIN_DIR)/circle
 EXAMPLES += $(BIN_DIR)/quadratic_curved_line
+EXAMPLES += $(BIN_DIR)/cubic_curved_line
+EXAMPLES += $(BIN_DIR)/path
 
 #wasm: $(WEB_DIR)/lib.wasm
 

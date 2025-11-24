@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-11-08
+ * Updated at  : 2025-11-24
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -463,7 +463,7 @@ INLINE void _draw_line_aa(Canvas* canvas, ivec2 p0, ivec2 p1, Color color) {
   }
 }
 
-void _canvas_draw_line(Canvas* canvas, Line args) {
+void canvas_draw_line_impl(Canvas* canvas, Line args) {
   ivec2 p0    = args.from;
   ivec2 p1    = args.to;
   Color color = args.color;
@@ -506,44 +506,44 @@ void canvas_draw_lines(Canvas* canvas, Line* lines, size_t count) {
 #define CURVE_TRESHOLD_SQ    (CURVE_TRESHOLD*CURVE_TRESHOLD)
 
 typedef struct {
-  vec2  v0;
-  vec2  v1;
-  vec2  v2;
+  vec2  p0;
+  vec2  p1;
+  vec2  p2;
 } QuadraticLineSegment;
 
-void _canvas_draw_quadratic_curved_line(Canvas* canvas, QuadraticCurvedLine args) {
+void canvas_draw_quadratic_curved_line_impl(Canvas* canvas, QuadraticCurvedLine args) {
   static QuadraticLineSegment stack[MAX_STACK_SIZE] = {0};
   int stack_ptr = 0;
 
   stack[stack_ptr++] = (QuadraticLineSegment) {
-    .v0 = args.v0, // Real curve point
-    .v1 = args.v1, // Control point
-    .v2 = args.v2, // Real curve point
+    .p0 = args.p0, // Real curve point
+    .p1 = args.p1, // Control point
+    .p2 = args.p2, // Real curve point
   };
 
   while (stack_ptr > 0) {
     QuadraticLineSegment curve = stack[--stack_ptr];
 
-    float dx      = curve.v2.x - curve.v0.x;
-    float dy      = curve.v2.y - curve.v0.y;
-    float sq_dist = 0;
+    float dx        = curve.p2.x - curve.p0.x;
+    float dy        = curve.p2.y - curve.p0.y;
+    float dist_sqrd = 0;
 
     if (dx != 0.0 || dy != 0.0) {
-      float px = curve.v1.x - curve.v0.x;
-      float py = curve.v1.y - curve.v0.y;
+      float px = curve.p1.x - curve.p0.x;
+      float py = curve.p1.y - curve.p0.y;
       float t = (px*dx + py*dy) / (dx*dx + dy*dy);
       t = CLAMP(t, 0, 1);
-      float closest_x = curve.v0.x + dx*t;
-      float closest_y = curve.v0.y + dy*t;
-      float cdx = curve.v1.x - closest_x;
-      float cdy = curve.v1.y - closest_y;
-      sq_dist = cdx*cdx + cdy*cdy;
+      float closest_x = curve.p0.x + dx*t;
+      float closest_y = curve.p0.y + dy*t;
+      float cdx = curve.p1.x - closest_x;
+      float cdy = curve.p1.y - closest_y;
+      dist_sqrd = cdx*cdx + cdy*cdy;
     }
 
-    if (sq_dist < CURVE_TRESHOLD_SQ || stack_ptr >= MAX_STACK_SIZE - 2) {
+    if (dist_sqrd < CURVE_TRESHOLD_SQ || stack_ptr >= MAX_STACK_SIZE - 2) {
       canvas_draw_line(canvas, {
-        .from        = {curve.v0.x, curve.v0.y},
-        .to          = {curve.v2.x, curve.v2.y},
+        .from        = {curve.p0.x, curve.p0.y},
+        .to          = {curve.p2.x, curve.p2.y},
         .color       = args.color,
         .antialiased = args.antialiased,
       });
@@ -551,20 +551,141 @@ void _canvas_draw_quadratic_curved_line(Canvas* canvas, QuadraticCurvedLine args
     }
 
     // Sibdivide
-    vec2 m1 = {(curve.v0.x + curve.v1.x) / 2.0f, (curve.v0.y + curve.v1.y) / 2.0f};
-    vec2 m2 = {(curve.v1.x + curve.v2.x) / 2.0f, (curve.v1.y + curve.v2.y) / 2.0f};
+    vec2 m1 = {(curve.p0.x + curve.p1.x) / 2.0f, (curve.p0.y + curve.p1.y) / 2.0f};
+    vec2 m2 = {(curve.p1.x + curve.p2.x) / 2.0f, (curve.p1.y + curve.p2.y) / 2.0f};
     vec2 c  = {(m1.x + m2.x) / 2.0f, (m1.y + m2.y) / 2.0f};
 
     stack[stack_ptr++] = (QuadraticLineSegment) {
-      .v0 = curve.v0,
-      .v1 = m1,
-      .v2 = c,
+      .p0 = curve.p0,
+      .p1 = m1,
+      .p2 = c,
     };
 
     stack[stack_ptr++] = (QuadraticLineSegment) {
-      .v0 = c,
-      .v1 = m2,
-      .v2 = curve.v2,
+      .p0 = c,
+      .p1 = m2,
+      .p2 = curve.p2,
     };
+  }
+}
+
+typedef struct {
+  vec2  p0;
+  vec2  p1;
+  vec2  p2;
+  vec2  p3;
+} CubicLineSegment;
+
+void canvas_draw_cubic_curved_line_impl(Canvas* canvas, CubicCurvedLine args) {
+  static CubicLineSegment stack[MAX_STACK_SIZE] = {0};
+  int stack_ptr = 0;
+
+  stack[stack_ptr++] = (CubicLineSegment) {
+    .p0 = args.p0, // Real curve point
+    .p1 = args.p1, // Control point
+    .p2 = args.p2, // Control point
+    .p3 = args.p3, // Real curve point
+  };
+
+  while (stack_ptr > 0) {
+    CubicLineSegment curve = stack[--stack_ptr];
+
+    float dx         = curve.p3.x - curve.p0.x;
+    float dy         = curve.p3.y - curve.p0.y;
+    float dist_sqrd1 = 0;
+    float dist_sqrd2 = 0;
+
+    if (dx != 0.0 || dy != 0.0) {
+      float px = curve.p1.x - curve.p0.x;
+      float py = curve.p1.y - curve.p0.y;
+      float t = CLAMP((px*dx + py*dy) / (dx*dx + dy*dy), 0, 1);
+      float closest_x = curve.p0.x + dx*t;
+      float closest_y = curve.p0.y + dy*t;
+      float cdx = curve.p1.x - closest_x;
+      float cdy = curve.p1.y - closest_y;
+      dist_sqrd1 = cdx*cdx + cdy*cdy;
+
+      px = curve.p2.x - curve.p0.x;
+      py = curve.p2.y - curve.p0.y;
+      t = CLAMP((px*dx + py*dy) / (dx*dx + dy*dy), 0, 1);
+      closest_x = curve.p0.x + dx*t;
+      closest_y = curve.p0.y + dy*t;
+      cdx = curve.p2.x - closest_x;
+      cdy = curve.p2.y - closest_y;
+      dist_sqrd2 = cdx*cdx + cdy*cdy;
+    }
+
+    bool is_line = (false
+      || (dist_sqrd1 < CURVE_TRESHOLD_SQ && dist_sqrd2 < CURVE_TRESHOLD_SQ)
+      || stack_ptr >= MAX_STACK_SIZE - 2
+    );
+    if (is_line) {
+      canvas_draw_line(canvas, {
+        .from        = {curve.p0.x, curve.p0.y},
+        .to          = {curve.p3.x, curve.p3.y},
+        .color       = args.color,
+        .antialiased = args.antialiased,
+      });
+      continue;
+    }
+
+    // Sibdivide
+    vec2 m01 = {(curve.p0.x + curve.p1.x) / 2.0f, (curve.p0.y + curve.p1.y) / 2.0f};
+    vec2 m12 = {(curve.p1.x + curve.p2.x) / 2.0f, (curve.p1.y + curve.p2.y) / 2.0f};
+    vec2 m23 = {(curve.p2.x + curve.p3.x) / 2.0f, (curve.p2.y + curve.p3.y) / 2.0f};
+
+    vec2 m012 = {(m01.x + m12.x) / 2.0f, (m01.y + m12.y) / 2.0f};
+    vec2 m123 = {(m12.x + m23.x) / 2.0f, (m12.y + m23.y) / 2.0f};
+
+    vec2 c = {(m012.x + m123.x) / 2.0f, (m012.y + m123.y) / 2.0f};
+
+    stack[stack_ptr++] = (CubicLineSegment) {
+      .p0 = curve.p0,
+      .p1 = m01,
+      .p2 = m012,
+      .p3 = c,
+    };
+
+    stack[stack_ptr++] = (CubicLineSegment) {
+      .p0 = c,
+      .p1 = m123,
+      .p2 = m23,
+      .p3 = curve.p3,
+    };
+  }
+}
+
+void canvas_draw_path(Canvas* canvas, Path* paths, u32 length) {
+  for (size_t i = 0; i < length; ++i) {
+    Path* path = &paths[i];
+    switch (path->type) {
+      case PATH_LINE:
+        canvas_draw_line(canvas, {
+          .to          = path->line.to,
+          .from        = path->line.from,
+          .color       = path->color,
+          .antialiased = path->antialiased,
+        });
+        break;
+      case PATH_QUADRATIC:
+        canvas_draw_quadratic_curved_line(canvas, {
+          .p0          = path->quadratic.p0,
+          .p1          = path->quadratic.p1,
+          .p2          = path->quadratic.p2,
+          .color       = path->color,
+          .antialiased = path->antialiased,
+        });
+        break;
+      case PATH_CUBIC:
+        canvas_draw_cubic_curved_line(canvas, {
+          .p0          = path->cubic.p0,
+          .p1          = path->cubic.p1,
+          .p2          = path->cubic.p2,
+          .p3          = path->cubic.p3,
+          .color       = path->color,
+          .antialiased = path->antialiased,
+        });
+        break;
+    }
   }
 }

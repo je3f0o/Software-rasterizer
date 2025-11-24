@@ -59,6 +59,8 @@ float sinf(float);
 #define RED    (Color){.raw = 0xFF0000FF}
 #define GREEN  (Color){.raw = 0xFF00FF00}
 #define BLUE   (Color){.raw = 0xFFFF0000}
+#define CYAN   (Color){.raw = 0xFFFFFF00}
+#define YELLOW (Color){.raw = 0xFF00FFFF}
 #define PURPLE (Color){.raw = 0xFFFF00FF}
 
 typedef int32_t    i32;
@@ -132,31 +134,67 @@ void  canvas_fill_rect(Canvas* canvas, Rect rect, Color color);
 void  canvas_fill_circle(Canvas* canvas, Circle circle, Color color);
 void  canvas_stroke_circle(Canvas* canvas, Circle circle, Color color);
 
+vec2  project_3d_to_2d(vec3 p);
+ivec2 project_2d_to_screen(Canvas* canvas, vec2 p);
+
 typedef struct {
   ivec2 from, to;
   Color color;
   bool  antialiased;
 } Line;
 
-void  _canvas_draw_line(Canvas* canvas, Line args);
+void canvas_draw_line_impl(Canvas* canvas, Line args);
 #define canvas_draw_line(canvas, ...) \
-  _canvas_draw_line(canvas, (Line)__VA_ARGS__)
+  canvas_draw_line_impl(canvas, (Line)__VA_ARGS__)
 
-void  canvas_draw_lines(Canvas* canvas, Line* lines, size_t count);
+void canvas_draw_lines(Canvas* canvas, Line* lines, size_t count);
 
 typedef struct {
-  vec2  v0;
-  vec2  v1;
-  vec2  v2;
+  vec2  p0;
+  vec2  p1;
+  vec2  p2;
   Color color;
   bool  antialiased;
 } QuadraticCurvedLine;
 
-void _canvas_draw_quadratic_curved_line(Canvas* canvas, QuadraticCurvedLine args);
+void canvas_draw_quadratic_curved_line_impl(Canvas* canvas, QuadraticCurvedLine args);
 #define canvas_draw_quadratic_curved_line(canvas, ...) \
-  _canvas_draw_quadratic_curved_line(canvas, (QuadraticCurvedLine)__VA_ARGS__)
+  canvas_draw_quadratic_curved_line_impl(canvas, (QuadraticCurvedLine)__VA_ARGS__)
 
-vec2  project_3d_to_2d(vec3 p);
-ivec2 project_2d_to_screen(Canvas* canvas, vec2 p);
+typedef struct {
+  vec2  p0;
+  vec2  p1;
+  vec2  p2;
+  vec2  p3;
+  Color color;
+  bool  antialiased;
+} CubicCurvedLine;
+
+void canvas_draw_cubic_curved_line_impl(Canvas* canvas, CubicCurvedLine args);
+#define canvas_draw_cubic_curved_line(canvas, ...) \
+  canvas_draw_cubic_curved_line_impl(canvas, (CubicCurvedLine)__VA_ARGS__)
+
+typedef enum {
+  PATH_LINE,
+  PATH_QUADRATIC,
+  PATH_CUBIC,
+} PathType;
+
+typedef struct {ivec2 from, to;}      PathLine;
+typedef struct {vec2 p0, p1, p2;}     PathQuadratic;
+typedef struct {vec2 p0, p1, p2, p3;} PathCubic;
+
+typedef struct {
+  PathType type;
+  union {
+    PathLine      line;
+    PathCubic     cubic;
+    PathQuadratic quadratic;
+  };
+  Color color;
+  bool  antialiased;
+} Path;
+
+void canvas_draw_path(Canvas* canvas, Path* paths, u32 length);
 
 #endif
