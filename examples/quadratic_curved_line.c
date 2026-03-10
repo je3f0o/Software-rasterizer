@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : quadratic_curved_line.c
  * Created at  : 2025-11-08
- * Updated at  : 2026-03-10
+ * Updated at  : 2026-03-11
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -54,7 +54,7 @@ static int get_dragged_point_index(int x, int y) {
   for (size_t i = 0; i < ARRAY_LENGTH(points); ++i) {
     int dx = x - points[i].circle.x;
     int dy = y - points[i].circle.y;
-    int r  = points[i].circle.radius;
+    int r  = points[i].circle.radius + 30; // Inflated hit radius for touch devices
     if (dx*dx+dy*dy < r*r) {
       return i;
     }
@@ -63,8 +63,9 @@ static int get_dragged_point_index(int x, int y) {
 }
 
 // Global exported hooks for WASM or Native SDL bridging
-void on_mouse_down(int x, int y) {
+int on_mouse_down(int x, int y) {
   dragged_index = get_dragged_point_index(x, y);
+  return dragged_index >= 0 ? 1 : 0;
 }
 
 void on_mouse_up(void) {
