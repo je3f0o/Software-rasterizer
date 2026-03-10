@@ -8,6 +8,7 @@ Just raw CPU math, memory buffer manipulation, and pure graphics fundamentals pi
 The entire core of the library sits gracefully at around **700 lines of C code**, making it incredibly lightweight, very powerful, highly educational, and effortlessly portable.
 
 Check out:
+
 [🌐 Try the Interactive Web WASM Demo](https://je3f0o.github.io/Software-rasterizer/)
 
 ---
