@@ -12,8 +12,11 @@ void* memcpy(void*, const void*, size_t __n);
 void* memset(void *__s, int __c, size_t __n);
 void  assert(bool);
 int   abs(int j);
+int   rand(void);
+void  srand(unsigned int seed);
 float cosf(float);
 float sinf(float);
+double floor(double);
 #else
 #include <assert.h>
 #include <stdlib.h>
@@ -32,8 +35,8 @@ float sinf(float);
 #ifndef M_PIf
   #define M_PIf	3.14159265358979323846f
 #endif
-#define MAX(a, b) (a > b ? a : b)
-#define MIN(a, b) (a < b ? a : b)
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define CLAMP(x, a, b) ((x) < (a) ? (a) : ((x) > (b) ? (b) : (x)))
 
 #define INLINE static inline

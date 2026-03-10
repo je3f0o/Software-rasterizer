@@ -2,20 +2,236 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
-  <title>Jeefo Graphics library</title>
-  <script src="main.js" type="module"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <title>Jeefo Canvas Library</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-panel: rgba(20, 20, 25, 0.6);
+      --accent: #00ffcc;
+      --accent-glow: rgba(0, 255, 204, 0.4);
+      --text-main: #ffffff;
+      --text-muted: #888899;
     }
-    html {
-      background-color: black;
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      background-image:
+        radial-gradient(circle at 15% 50%, rgba(0, 255, 204, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(150, 0, 255, 0.05) 0%, transparent 50%);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-right: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    #sidebar-header {
+      padding: 30px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    #sidebar-header h1 {
+      font-size: 1.2rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    #sidebar-header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    #demo-list {
+      padding: 15px;
+      overflow-y: auto;
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .demo-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 12px 16px;
+      border-radius: 8px;
+      text-align: left;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .demo-btn:hover {
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-main);
+    }
+
+    .demo-btn.active {
+      background: rgba(0, 255, 204, 0.1);
+      border: 1px solid rgba(0, 255, 204, 0.3);
+      color: var(--accent);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    #main-content {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #top-bar {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 30px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(10, 10, 15, 0.5);
+      backdrop-filter: blur(5px);
+    }
+
+    #demo-title { font-weight: 600; font-size: 1rem; }
+
+    #fps-counter {
+      font-family: monospace;
+      font-size: 0.9rem;
+      color: var(--accent);
+      background: rgba(0, 255, 204, 0.1);
+      padding: 4px 10px;
+      border-radius: 4px;
+      border: 1px solid rgba(0, 255, 204, 0.2);
+    }
+
+    #instruction-bar {
+      background: rgba(0, 255, 204, 0.15);
+      border-bottom: 1px solid rgba(0, 255, 204, 0.3);
+      padding: 12px 30px;
+      color: #ffffff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      display: none; /* hidden by default */
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      z-index: 5;
+    }
+
+    #instruction-bar .icon {
+      font-size: 1.2rem;
+    }
+
+    #canvas-container {
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    canvas {
+      background-color: #181818;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      max-width: 100%;
+      max-height: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      outline: none;
+      transition: box-shadow 0.3s ease;
+    }
+
+    canvas:focus {
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent), 0 0 30px var(--accent-glow);
+    }
+
+    #overlay-message {
+      position: absolute;
+      background: rgba(20, 20, 25, 0.9);
+      padding: 20px 40px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 100, 100, 0.3);
+      color: #ff8888;
+      font-weight: 600;
+      backdrop-filter: blur(5px);
+      display: none;
+      text-align: center;
+      z-index: 20;
+    }
+
+    #overlay-message.loading {
+      border-color: rgba(0, 255, 204, 0.3);
+      color: var(--accent);
+    }
+
+    /* Grid background pattern */
+    #canvas-container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: -1;
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <canvas tabindex="0" />
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h1>Jeefo Canvas</h1>
+      <p>C/WASM Software Rasterizer</p>
+    </div>
+    <div id="demo-list">
+      <!-- Buttons injected by JS -->
+    </div>
+  </div>
+
+  <div id="main-content">
+    <div id="top-bar">
+      <div id="demo-title">Select a Demo</div>
+      <div id="fps-counter">0 FPS</div>
+    </div>
+
+    <!-- Prominent Instruction Bar -->
+    <div id="instruction-bar">
+      <span class="icon">💡</span>
+      <span id="instruction-text"></span>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="view-canvas" tabindex="0"></canvas>
+      <div id="overlay-message"></div>
+    </div>
+  </div>
+
+  <script src="main.js" type="module"></script>
 </body>
 </html>

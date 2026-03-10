@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : path.c
  * Created at  : 2025-11-08
- * Updated at  : 2025-11-25
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -49,6 +49,11 @@ static Path paths[] = {
     .antialiased = true,
   },
 };
+
+void on_key_down(int key) {
+  // Web code 32 = Space
+  if (key == 32) draw_debug_lines = !draw_debug_lines;
+}
 
 void init_scene(Canvas* canvas) {
   paths[0].cubic = (PathCubic) {
@@ -190,8 +195,8 @@ int main(void) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) is_running = false;
 
-      if (event.key.state == SDL_PRESSED && event.key.keysym.sym == SDLK_SPACE) {
-        draw_debug_lines = !draw_debug_lines;
+      if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_SPACE) on_key_down(32);
       }
     }
 

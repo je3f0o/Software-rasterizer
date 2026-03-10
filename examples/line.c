@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : line.c
  * Created at  : 2025-07-11
- * Updated at  : 2025-09-05
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -21,10 +21,13 @@ int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *
 #endif
 #define ARRAY_LENGTH(arr) (sizeof(arr) / sizeof(arr[0]))
 
+// Increased resolution to properly showcase the AA differences cleanly
 #define WINDOW_WIDTH  800
 #define WINDOW_HEIGHT 800
-#define CANVAS_WIDTH  80
-#define CANVAS_HEIGHT 80
+#define CANVAS_WIDTH  800
+#define CANVAS_HEIGHT 800
+
+static float current_angle = 0.0f;
 
 void canvas_present(Canvas* canvas) {
   assert(canvas != null);
@@ -39,88 +42,51 @@ void init_scene(Canvas* canvas) {
 }
 
 void canvas_update(Canvas* canvas, double dt) {
-  UNUSED(dt);
   UNUSED(canvas);
+  // Slowly rotate the starbursts over time
+  current_angle += dt * 0.25f;
 }
 
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
 
-  Line lines[] = {
-    // X axis
-    (Line){
-      .from = {
-        .y = canvas->height / 2,
-      },
-      .to = {
-        .x = canvas->width,
-        .y = canvas->height / 2,
-      },
-      .color = RED,
-    },
+  int num_lines = 40;
+  float radius = canvas->width * 0.22f;
 
-    // Y axis
-    (Line){
-      .from = {
-        .x = canvas->width / 2,
-      },
-      .to = {
-        .x = canvas->width / 2,
-        .y = canvas->height / 5 * 4,
-      },
-      .color = BLUE,
-    },
+  // Left Center (Aliased)
+  float cx1 = canvas->width * 0.25f;
+  float cy1 = canvas->height * 0.5f;
 
-    // No steep lines
-    (Line){
-      .from = {
-        .x = canvas->width,
-        .y = canvas->height / 2 - 10,
-      },
-      .to = {
-        .y = canvas->height / 2.5 - 10,
-      },
-      .color = GREEN,
-    },
+  // Right Center (Anti-Aliased)
+  float cx2 = canvas->width * 0.75f;
+  float cy2 = canvas->height * 0.5f;
 
-    (Line){
-      .from = {
-        .x = canvas->width,
-        .y = canvas->height / 2,
-      },
-      .to = {
-        .y = canvas->height / 2.5,
-      },
-      .color       = PURPLE,
+  for (int i = 0; i < num_lines; ++i) {
+    float angle = current_angle + (i * M_PIf * 2.0f / num_lines);
+    float dx = cosf(angle) * radius;
+    float dy = sinf(angle) * radius;
+
+    // Create a smooth color gradient based on the angle
+    u8 r_val = (u8)((cosf(angle) * 0.5f + 0.5f) * 255.0f);
+    u8 b_val = (u8)((sinf(angle) * 0.5f + 0.5f) * 255.0f);
+    Color line_col = { .rgba = { .r = r_val, .g = 150, .b = b_val, .a = 255 } };
+
+    // Left side: Aliased lines
+    canvas_draw_line(canvas, {
+      .from        = {cx1, cy1},
+      .to          = {cx1 + dx, cy1 + dy},
+      .color       = line_col,
+      .antialiased = false,
+    });
+
+    // Right side: Anti-Aliased lines
+    canvas_draw_line(canvas, {
+      .from        = {cx2, cy2},
+      .to          = {cx2 + dx, cy2 + dy},
+      .color       = line_col,
       .antialiased = true,
-    },
-
-    // Steep lines
-    (Line){
-      .from = {
-        .x = canvas->width / 2.5,
-      },
-      .to = {
-        .x = canvas->width / 2,
-        .y = canvas->height,
-      },
-      .color = GREEN,
-    },
-
-    (Line){
-      .from = {
-        .x = canvas->width / 2.5 + 10,
-      },
-      .to = {
-        .x = canvas->width / 2 + 10,
-        .y = canvas->height,
-      },
-      .color       = PURPLE,
-      .antialiased = true,
-    },
-  };
-
-  canvas_draw_lines(canvas, lines, ARRAY_LENGTH(lines));
+    });
+  }
 
   canvas_present(canvas);
 }
@@ -137,7 +103,7 @@ int main(void) {
     return 1;
   }
 
-  window = SDL_CreateWindow("Anti aliased on/off lines",
+  window = SDL_CreateWindow("Aliased vs Anti-Aliased Lines",
                             SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED,
                             WINDOW_WIDTH, WINDOW_HEIGHT,

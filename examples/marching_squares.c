@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : marching_squares.c
  * Created at  : 2025-07-11
- * Updated at  : 2025-09-05
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -43,9 +43,16 @@ void canvas_present(Canvas* canvas) {
 #endif
 }
 
+#if defined(__wasm__) || defined(__wasm32__)
+extern float rand01(void);
+#else
+#ifndef RAND_MAX
+#define RAND_MAX 0x7fffffff
+#endif
 INLINE float rand01(void) {
   return rand()/(float)RAND_MAX;
 }
+#endif
 
 INLINE int is_rock(u32 x, u32 y) {
   u32 index = y * grid.cols + x;

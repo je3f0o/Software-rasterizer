@@ -1,13 +1,15 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : lib.c
  * Created at  : 2025-06-04
- * Updated at  : 2025-11-24
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 #include "lib.h"
+#if !defined(__wasm__) && !defined(__wasm32__)
 #include <math.h>
+#endif
 //#include <stdio.h>
 
 Canvas* create_canvas(u32 width, u32 height) {

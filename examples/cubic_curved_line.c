@@ -1,13 +1,12 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : cubic_curved_line.c
  * Created at  : 2025-11-08
- * Updated at  : 2025-11-24
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 #include "lib.h"
-#include <math.h>
 
 #if defined(__wasm__) || defined(__wasm32__)
 int   stbi_write_png(char const *filename, int w, int h, int comp, const void  *data, int stride_in_bytes);
@@ -61,6 +60,28 @@ static int get_dragged_point_index(int x, int y) {
     }
   }
   return -1;
+}
+
+// Global exported hooks for WASM or Native SDL bridging
+void on_mouse_down(int x, int y) {
+  dragged_index = get_dragged_point_index(x, y);
+}
+
+void on_mouse_up(void) {
+  dragged_index = -1;
+}
+
+void on_mouse_move(int x, int y) {
+  if (dragged_index >= 0) {
+    points[dragged_index].circle.x = x;
+    points[dragged_index].circle.y = y;
+  }
+}
+
+void on_key_down(int key) {
+  // Web codes: 37 = Left, 39 = Right
+  if (key == 37) t = MAX(0.0f, t - 0.05f);
+  if (key == 39) t = MIN(1.0f, t + 0.05f);
 }
 
 void init_scene(Canvas* canvas) {
@@ -224,30 +245,19 @@ int main(void) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) is_running = false;
 
-      if (dragged_index >= 0) {
-        points[dragged_index].circle.x = event.motion.x;
-        points[dragged_index].circle.y = event.motion.y;
-      }
-
-      if (event.key.state == SDL_PRESSED) {
-        switch (event.key.keysym.sym) {
-          case SDLK_LEFT:
-            t = fmaxf(0, t - 0.05);
-            break;
-          case SDLK_RIGHT:
-            t = fminf(1, t + 0.05);
-            break;
-        }
-      }
-
-      switch (event.button.type) {
-        case SDL_MOUSEBUTTONDOWN: {
-          int x = event.button.x;
-          int y = event.button.y;
-          dragged_index = get_dragged_point_index(x, y);
-        } break;
+      switch (event.type) {
+        case SDL_KEYDOWN:
+          if (event.key.keysym.sym == SDLK_LEFT)  on_key_down(37);
+          if (event.key.keysym.sym == SDLK_RIGHT) on_key_down(39);
+          break;
+        case SDL_MOUSEBUTTONDOWN:
+          on_mouse_down(event.button.x, event.button.y);
+          break;
         case SDL_MOUSEBUTTONUP:
-          dragged_index = -1;
+          on_mouse_up();
+          break;
+        case SDL_MOUSEMOTION:
+          on_mouse_move(event.motion.x, event.motion.y);
           break;
       }
     }

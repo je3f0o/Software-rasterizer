@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : 3d_triangle.c
  * Created at  : 2025-06-13
- * Updated at  : 2025-07-27
+ * Updated at  : 2026-03-10
  * Author      : jeefo
  * Purpose     :
  * Description :
@@ -32,8 +32,18 @@ Vertex3D vertices[] = {
 };
 Vertex3D dest_vertices[6] = {0};
 
+static bool show_depth = false;
+
+// Global exported hook for WASM or Native SDL bridging
+void on_key_down(int key) {
+  // Web codes: 32 = Space
+  if (key == 32) {
+    show_depth = !show_depth;
+  }
+}
+
 float radians(float degrees) {
-  return degrees * M_PIf/180.0;
+  return degrees * M_PIf/180.0f;
 }
 
 void vec3_rotate_y_at(vec3* dest, vec3* p, vec3 pivot, float angle) {
@@ -91,8 +101,33 @@ void canvas_update(Canvas* canvas, double dt) {
 void canvas_render(Canvas* canvas) {
   canvas_clear(canvas, GRAY);
 
+  // Standard color and depth writes happens here implicitly via lib.c
   canvas_fill_triangle_3d(canvas, dest_vertices);
   canvas_fill_triangle_3d(canvas, &dest_vertices[3]);
+
+  // Post-processing: If toggled, map the raw depth buffer values to a grayscale color
+  if (show_depth) {
+    // The Z range goes from roughly 0.75 to 1.75 based on the pivot/radius
+    // The depth buffer stores 1/z.
+    float min_d = 1.0f / 1.75f;
+    float max_d = 1.0f / 0.75f;
+
+    for (i32 y = 0; y < canvas->height; ++y) {
+      for (i32 x = 0; x < canvas->width; ++x) {
+        u32 index = y * canvas->width + x;
+        float depth = canvas->depth_buffer[index];
+
+        // depth > 0 means a pixel was drawn here (ignores the cleared background)
+        if (depth > 0.0f) {
+          float normalized = (depth - min_d) / (max_d - min_d);
+          u8 val = (u8)(CLAMP(normalized, 0.0f, 1.0f) * 255.0f);
+
+          Color depth_color = { .rgba = { .r = val, .g = val, .b = val, .a = 255 } };
+          canvas->color_buffer[index] = depth_color.raw;
+        }
+      }
+    }
+  }
 
   canvas_present(canvas);
 }
@@ -142,6 +177,11 @@ int main(void) {
   while (is_running) {
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_QUIT) is_running = false;
+
+      // Pass the spacebar input to our exported function
+      if (event.type == SDL_KEYDOWN) {
+        if (event.key.keysym.sym == SDLK_SPACE) on_key_down(32);
+      }
     }
 
     canvas_update(canvas, 1.0/60.0);
