@@ -1,7 +1,6 @@
 *.o
 *.swp
 *.swn
-*.wasm
 bin
 build
 TODO.txt
