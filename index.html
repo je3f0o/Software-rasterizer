@@ -2,14 +2,14 @@
 <html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Jeefo Canvas Library</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
     :root {
       --bg-dark: #0a0a0f;
-      --bg-panel: rgba(20, 20, 25, 0.6);
+      --bg-panel: #141419;
       --accent: #00ffcc;
       --accent-glow: rgba(0, 255, 204, 0.4);
       --text-main: #ffffff;
@@ -21,32 +21,31 @@
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--bg-dark);
-      background-image:
-        radial-gradient(circle at 15% 50%, rgba(0, 255, 204, 0.05) 0%, transparent 50%),
-        radial-gradient(circle at 85% 30%, rgba(150, 0, 255, 0.05) 0%, transparent 50%);
       color: var(--text-main);
-      height: 100vh;
-      display: flex;
-      overflow: hidden;
+      overflow-x: hidden;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 40px 40px;
     }
 
-    #sidebar {
-      width: 280px;
-      background: var(--bg-panel);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-right: 1px solid rgba(255, 255, 255, 0.05);
+    #top-bar {
+      position: sticky;
+      top: 0;
+      height: 60px;
       display: flex;
-      flex-direction: column;
-      z-index: 10;
-    }
-
-    #sidebar-header {
-      padding: 30px 20px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(10, 10, 15, 0.95);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      z-index: 100;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
     }
 
-    #sidebar-header h1 {
+    #header-title {
       font-size: 1.2rem;
       font-weight: 800;
       letter-spacing: 1px;
@@ -56,75 +55,45 @@
       -webkit-text-fill-color: transparent;
     }
 
-    #sidebar-header p {
-      font-size: 0.8rem;
+    .github-link {
       color: var(--text-muted);
-      margin-top: 4px;
-    }
-
-    #demo-list {
-      padding: 15px;
-      overflow-y: auto;
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .demo-btn {
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--text-muted);
-      padding: 12px 16px;
-      border-radius: 8px;
-      text-align: left;
-      font-family: inherit;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .demo-btn:hover {
-      background: rgba(255, 255, 255, 0.03);
-      color: var(--text-main);
-    }
-
-    .demo-btn.active {
-      background: rgba(0, 255, 204, 0.1);
-      border: 1px solid rgba(0, 255, 204, 0.3);
-      color: var(--accent);
-      box-shadow: 0 0 15px var(--accent-glow);
-    }
-
-    #main-content {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    #top-bar {
-      height: 60px;
       display: flex;
       align-items: center;
-      flex-shrink: 0;
-      justify-content: space-between;
-      padding: 0 30px;
+      transition: color 0.2s ease;
+    }
+
+    .github-link:hover { color: var(--accent); }
+    .github-link svg { width: 28px; height: 28px; fill: currentColor; }
+
+    #demos-container {
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 50px;
+    }
+
+    .demo-card {
+      background: var(--bg-panel);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .demo-header {
+      padding: 20px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      background: rgba(10, 10, 15, 0.5);
-      backdrop-filter: blur(5px);
-    }
-
-    #demo-title { font-weight: 600; font-size: 1rem; }
-
-    .top-bar-right {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 20px;
+      background: rgba(0, 0, 0, 0.3);
     }
 
-    #fps-counter {
+    .demo-title { font-size: 1.1rem; font-weight: 600; }
+
+    .demo-fps {
       font-family: monospace;
       font-size: 0.9rem;
       color: var(--accent);
@@ -134,140 +103,69 @@
       border: 1px solid rgba(0, 255, 204, 0.2);
     }
 
-    /* GitHub Link Styling */
-    .github-link {
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      transition: color 0.2s ease, transform 0.2s ease, filter 0.2s ease;
-    }
-
-    .github-link:hover {
-      color: var(--accent);
-      transform: scale(1.1);
-      filter: drop-shadow(0 0 8px var(--accent-glow));
-    }
-
-    .github-link svg {
-      width: 28px;
-      height: 28px;
-      fill: currentColor;
-    }
-
-    #instruction-bar {
+    .instruction-bar {
       background: rgba(0, 255, 204, 0.15);
       border-bottom: 1px solid rgba(0, 255, 204, 0.3);
-      padding: 12px 30px;
+      padding: 12px 20px;
       color: #ffffff;
       font-size: 0.95rem;
       font-weight: 600;
-      display: none; /* hidden by default */
+      display: flex;
       align-items: center;
       gap: 10px;
-      flex-shrink: 0;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      z-index: 5;
     }
 
-    #instruction-bar .icon {
-      font-size: 1.2rem;
-    }
-
-    #canvas-container {
-      flex-grow: 1;
+    .canvas-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
-      position: relative;
+      background-color: #181818;
     }
 
     canvas {
-      background-color: #181818;
-      border-radius: 12px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
-      max-width: 100%;
-      max-height: 100%;
-      aspect-ratio: 1 / 1;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       outline: none;
-      transition: box-shadow 0.3s ease;
+      touch-action: none;
     }
 
-    canvas:focus {
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent), 0 0 30px var(--accent-glow);
-    }
-
-    #overlay-message {
+    .canvas-overlay {
       position: absolute;
       background: rgba(20, 20, 25, 0.9);
-      padding: 20px 40px;
+      padding: 16px 32px;
       border-radius: 8px;
-      border: 1px solid rgba(255, 100, 100, 0.3);
-      color: #ff8888;
-      font-weight: 600;
-      backdrop-filter: blur(5px);
-      display: none;
-      text-align: center;
-      z-index: 20;
-    }
-
-    #overlay-message.loading {
-      border-color: rgba(0, 255, 204, 0.3);
+      border: 1px solid rgba(0, 255, 204, 0.3);
       color: var(--accent);
+      font-weight: 600;
+      display: none;
+      pointer-events: none;
+      z-index: 10;
     }
 
-    /* Grid background pattern */
-    #canvas-container::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 40px 40px;
-      z-index: -1;
-      pointer-events: none;
+    @media (max-width: 600px) {
+      #demos-container { padding: 20px 10px; gap: 30px; }
+      .demo-header { padding: 15px; }
+      .instruction-bar { font-size: 0.85rem; padding: 10px 15px; }
     }
   </style>
 </head>
 <body>
-  <div id="sidebar">
-    <div id="sidebar-header">
-      <h1>Jeefo Canvas</h1>
-      <p>C/WASM Software Rasterizer</p>
-    </div>
-    <div id="demo-list">
-      <!-- Buttons injected by JS -->
-    </div>
+
+  <div id="top-bar">
+    <div id="header-title">Jeefo Canvas</div>
+    <a href="https://github.com/je3f0o/Software-rasterizer" target="_blank" rel="noopener noreferrer" class="github-link" title="View Source on GitHub">
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+      </svg>
+    </a>
   </div>
 
-  <div id="main-content">
-    <div id="top-bar">
-      <div id="demo-title">Select a Demo</div>
-
-      <div class="top-bar-right">
-        <div id="fps-counter">0 FPS</div>
-
-        <a href="https://github.com/je3f0o/Software-rasterizer" target="_blank" rel="noopener noreferrer" class="github-link" title="View Source on GitHub">
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-          </svg>
-        </a>
-      </div>
-
-    </div>
-
-    <!-- Prominent Instruction Bar -->
-    <div id="instruction-bar">
-      <span class="icon">💡</span>
-      <span id="instruction-text"></span>
-    </div>
-
-    <div id="canvas-container">
-      <canvas id="view-canvas" tabindex="0"></canvas>
-      <div id="overlay-message"></div>
-    </div>
+  <div id="demos-container">
+    <!-- Demos injected by JS -->
   </div>
 
   <script src="main.js" type="module"></script>

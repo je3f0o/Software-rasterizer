@@ -6,3 +6,4 @@ build
 TODO.txt
 test/
 test.sh
+copy_project.sh

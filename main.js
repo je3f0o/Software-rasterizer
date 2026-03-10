@@ -1,19 +1,19 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
  * File Name   : main.js
  * Created at  : 2025-06-05
- * Updated at  : 2026-03-10
+ * Updated at  : 2026-03-11
  * Author      : jeefo
  * Purpose     :
  * Description :
 .-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.*/
 /* globals ImageData, WebAssembly */
 
-const demos = [
+const demoDefinitions = [
   { id: '2d_triangle', name: '2D Triangle' },
-  { id: '3d_triangle', name: '3D Triangle', help: 'Press SPACE to toggle between Color and Depth Buffer (Z-Buffer).' },
-  { id: 'line', name: 'Lines Rasterizer (AA Demo)', help: 'Left Shape: Aliased Rendering | Right Shape: Anti-Aliased Rendering' },
-  { id: 'cubic_curved_line', name: 'Cubic Curve', help: 'Interactive: Drag nodes with mouse. Use Left/Right arrows to move T.' },
-  { id: 'quadratic_curved_line', name: 'Quadratic Curve', help: 'Interactive: Drag nodes with mouse. Use Left/Right arrows to move T.' },
+  { id: '3d_triangle', name: '3D Triangle', help: 'Press SPACE to toggle Depth Buffer (Z-Buffer).' },
+  { id: 'line', name: 'Lines Rasterizer (AA Demo)', help: 'Left Shape: Aliased | Right Shape: Anti-Aliased' },
+  { id: 'cubic_curved_line', name: 'Cubic Curve', help: 'Interactive: Drag nodes. Use Left/Right arrows to move T.' },
+  { id: 'quadratic_curved_line', name: 'Quadratic Curve', help: 'Interactive: Drag nodes. Use Left/Right arrows to move T.' },
   { id: 'path', name: 'Cubic & Quad Paths', help: 'Press SPACE to toggle debug bounding lines.' },
   { id: 'circle', name: 'Midpoint Circle' },
   { id: 'aa_circle', name: 'Anti-Aliased Filled Circle' },
@@ -21,96 +21,18 @@ const demos = [
   { id: 'marching_squares', name: 'Marching Squares' },
 ];
 
-const viewCanvas = document.getElementById("view-canvas");
-const ctx = viewCanvas.getContext("2d", { alpha: false });
-const demoListEl = document.getElementById("demo-list");
-const demoTitleEl = document.getElementById("demo-title");
-const overlayMsg = document.getElementById("overlay-message");
-const fpsCounter = document.getElementById("fps-counter");
-
-const instructionBar = document.getElementById("instruction-bar");
-const instructionText = document.getElementById("instruction-text");
-
 const INTERNAL_WIDTH = 800;
 const INTERNAL_HEIGHT = 800;
-viewCanvas.width = INTERNAL_WIDTH;
-viewCanvas.height = INTERNAL_HEIGHT;
 
-let currentRafId = null;
-let activeExports = null;
+const demosContainer = document.getElementById("demos-container");
+const demoStates = {};
 
-const showMessage = (msg, isError = false) => {
-  overlayMsg.textContent = msg;
-  overlayMsg.style.display = 'block';
-  overlayMsg.className = isError ? '' : 'loading';
-  if (isError) {
-    ctx.fillStyle = '#181818';
-    ctx.fillRect(0, 0, viewCanvas.width, viewCanvas.height);
-  }
-};
+// ==========================================
+// Function Definitions (No Hoisting)
+// ==========================================
 
-const hideMessage = () => {
-  overlayMsg.style.display = 'none';
-};
-
-const updateHelpText = (text) => {
-  if (text) {
-    instructionText.textContent = text;
-    instructionBar.style.display = 'flex';
-  } else {
-    instructionBar.style.display = 'none';
-  }
-};
-
-const handleMouseMove = (e) => {
-  if (!activeExports || !activeExports.on_mouse_move) return;
-  const rect = viewCanvas.getBoundingClientRect();
-  const x = Math.round(((e.clientX - rect.left) / rect.width) * INTERNAL_WIDTH);
-  const y = Math.round(((e.clientY - rect.top) / rect.height) * INTERNAL_HEIGHT);
-  activeExports.on_mouse_move(x, y);
-};
-
-const handleMouseDown = (e) => {
-  if (!activeExports || !activeExports.on_mouse_down) return;
-  viewCanvas.focus(); // Ensure canvas captures key events when clicked
-  const rect = viewCanvas.getBoundingClientRect();
-  const x = Math.round(((e.clientX - rect.left) / rect.width) * INTERNAL_WIDTH);
-  const y = Math.round(((e.clientY - rect.top) / rect.height) * INTERNAL_HEIGHT);
-  activeExports.on_mouse_down(x, y);
-};
-
-const handleMouseUp = () => {
-  if (activeExports && activeExports.on_mouse_up) activeExports.on_mouse_up();
-};
-
-const handleKeyDown = (e) => {
-  // Prevent default scrolling for arrows and space when interacting
-  if ([32, 37, 38, 39, 40].includes(e.keyCode)) {
-    e.preventDefault();
-  }
-  activeExports.on_key_down?.(e.keyCode);
-};
-
-window.addEventListener('mousemove', handleMouseMove);
-window.addEventListener('mousedown', handleMouseDown);
-window.addEventListener('mouseup', handleMouseUp);
-window.addEventListener('mouseleave', handleMouseUp);
-window.addEventListener('keydown', handleKeyDown);
-
-const loadDemo = async (demo) => {
-  if (currentRafId) cancelAnimationFrame(currentRafId);
-
-  document.querySelectorAll('.demo-btn').forEach(btn => btn.classList.remove('active'));
-  document.getElementById(`btn-${demo.id}`).classList.add('active');
-  demoTitleEl.textContent = demo.name;
-
-  updateHelpText(demo.help);
-  showMessage(`Loading ${demo.name}...`);
-
-  let heapPtr = 0;
-  activeExports = null;
-
-  const env = {
+const createEnv = (state) => {
+  return {
     cosf: Math.cos,
     sinf: Math.sin,
     floor: Math.floor,
@@ -118,103 +40,244 @@ const loadDemo = async (demo) => {
     srand: () => {},
     rand01: () => Math.random(),
     malloc: (size) => {
-      if (!activeExports) return 0;
-      if (heapPtr === 0) heapPtr = activeExports.__heap_base.value || activeExports.__heap_base;
-      const ptr = heapPtr;
-      heapPtr += size;
-      heapPtr = (heapPtr + 7) & ~7;
+      if (!state.exports) return 0;
+      if (state.heapPtr === 0) state.heapPtr = state.exports.__heap_base.value || state.exports.__heap_base;
+      const ptr = state.heapPtr;
+      state.heapPtr += size;
+      state.heapPtr = (state.heapPtr + 7) & ~7; // align to 8 bytes
 
-      const memory = activeExports.memory;
-      if (heapPtr > memory.buffer.byteLength) {
-        memory.grow(Math.ceil((heapPtr - memory.buffer.byteLength) / 65536));
+      const memory = state.exports.memory;
+      if (state.heapPtr > memory.buffer.byteLength) {
+        memory.grow(Math.ceil((state.heapPtr - memory.buffer.byteLength) / 65536));
       }
       return ptr;
     },
     free: () => {},
     memcpy: (dest, src, size) => {
-      if (!activeExports) return;
-      const buffer = new Uint8Array(activeExports.memory.buffer);
+      if (!state.exports) return;
+      const buffer = new Uint8Array(state.exports.memory.buffer);
       buffer.copyWithin(dest, src, src + size);
     },
     memset: (dest, value, size) => {
-      if (!activeExports) return;
-      const buffer = new Uint8Array(activeExports.memory.buffer);
+      if (!state.exports) return;
+      const buffer = new Uint8Array(state.exports.memory.buffer);
       buffer.fill(value, dest, dest + size);
     },
     assert: (condition) => {
-      if (!condition) throw new Error("Assert failed");
+      if (!condition) throw new Error(`Assert failed in ${state.def.id}`);
     },
     stbi_write_png: () => {}
   };
+};
+
+const loadWasm = async (state) => {
+  state.overlay.style.display = 'block';
 
   try {
-    const response = await fetch(`${demo.id}.wasm`);
-    if (!response.ok) throw new Error(`WASM file not found: ${demo.id}.wasm`);
+    const response = await fetch(`${state.def.id}.wasm`);
+    if (!response.ok) throw new Error(`Not found`);
 
-    const wasm = await WebAssembly.instantiateStreaming(response, { env });
-    activeExports = wasm.instance.exports;
+    const wasm = await WebAssembly.instantiateStreaming(response, { env: createEnv(state) });
+    state.exports = wasm.instance.exports;
 
-    const nc = activeExports.create_canvas(INTERNAL_WIDTH, INTERNAL_HEIGHT);
-
-    if (activeExports.init_scene) {
-      activeExports.init_scene(nc);
+    state.canvasStructPtr = state.exports.create_canvas(INTERNAL_WIDTH, INTERNAL_HEIGHT);
+    if (state.exports.init_scene) {
+      state.exports.init_scene(state.canvasStructPtr);
     }
 
-    let lastTimestamp = performance.now();
-    let frameCount = 0;
-    let lastFpsTime = lastTimestamp;
-
-    hideMessage();
-
-    const loop = (timestamp) => {
-      const dt = (timestamp - lastTimestamp) * 0.001;
-      lastTimestamp = timestamp;
-
-      frameCount++;
-      if (timestamp - lastFpsTime >= 1000) {
-        fpsCounter.textContent = `${frameCount} FPS`;
-        frameCount = 0;
-        lastFpsTime = timestamp;
-      }
-
-      if (activeExports.canvas_update) activeExports.canvas_update(nc, dt);
-      if (activeExports.canvas_render) activeExports.canvas_render(nc);
-
-      if (activeExports.memory) {
-        // Canvas struct layout: width(0), height(4), color_buffer_ptr(8)
-        const canvasStructView = new Uint32Array(activeExports.memory.buffer, nc, 4);
-        const colorBufferPtr = canvasStructView[2];
-
-        if (colorBufferPtr > 0) {
-          const pixelsView = new Uint8ClampedArray(
-            activeExports.memory.buffer,
-            colorBufferPtr,
-            INTERNAL_WIDTH * INTERNAL_HEIGHT * 4
-          );
-          ctx.putImageData(new ImageData(pixelsView, INTERNAL_WIDTH, INTERNAL_HEIGHT), 0, 0);
-        }
-      }
-
-      currentRafId = requestAnimationFrame(loop);
-    };
-
-    currentRafId = requestAnimationFrame(loop);
-
+    state.isLoaded = true;
+    state.overlay.style.display = 'none';
+    state.lastTimestamp = performance.now();
   } catch (err) {
-    console.error(err);
-    showMessage(`Failed to load ${demo.name}\nMake sure ${demo.id}.wasm is compiled.`, true);
+    console.error(`Failed to load ${state.def.id}:`, err);
+    state.overlay.textContent = "Failed to compile/load .wasm";
+    state.overlay.style.borderColor = "rgba(255, 100, 100, 0.5)";
+    state.overlay.style.color = "#ff8888";
   }
 };
 
-demos.forEach(demo => {
-  const btn = document.createElement('button');
-  btn.className = 'demo-btn';
-  btn.id = `btn-${demo.id}`;
-  btn.textContent = demo.name;
-  btn.onclick = () => loadDemo(demo);
-  demoListEl.appendChild(btn);
+const bindInputEvents = (id) => {
+  const state = demoStates[id];
+  const cvs = state.canvas;
+
+  const getCoords = (e) => {
+    const rect = cvs.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const x = Math.round(((clientX - rect.left) / rect.width) * INTERNAL_WIDTH);
+    const y = Math.round(((clientY - rect.top) / rect.height) * INTERNAL_HEIGHT);
+    return { x, y };
+  };
+
+  const onDown = (e) => {
+    // Prevent default to stop mouse emulation on touch devices,
+    // but DO NOT call cvs.focus() to prevent auto-scrolling page jumps.
+    if (e.type === 'touchstart') e.preventDefault();
+
+    if (state.exports && state.exports.on_mouse_down) {
+      const { x, y } = getCoords(e);
+      state.exports.on_mouse_down(x, y);
+    }
+  };
+
+  const onMove = (e) => {
+    if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling while dragging
+    if (state.exports && state.exports.on_mouse_move) {
+      const { x, y } = getCoords(e);
+      state.exports.on_mouse_move(x, y);
+    }
+  };
+
+  const onUp = () => {
+    if (state.exports && state.exports.on_mouse_up) {
+      state.exports.on_mouse_up();
+    }
+  };
+
+  cvs.addEventListener('mousedown', onDown);
+  cvs.addEventListener('mousemove', onMove);
+  cvs.addEventListener('mouseup', onUp);
+  cvs.addEventListener('mouseleave', onUp);
+
+  cvs.addEventListener('touchstart', onDown, { passive: false });
+  cvs.addEventListener('touchmove', onMove, { passive: false });
+  cvs.addEventListener('touchend', onUp);
+  cvs.addEventListener('touchcancel', onUp);
+};
+
+const globalRenderLoop = (timestamp) => {
+  for (const id in demoStates) {
+    const state = demoStates[id];
+
+    // Skip canvases that are off-screen or haven't loaded yet
+    if (!state.isVisible || !state.isLoaded) continue;
+
+    // Handle large dt jumps when unpausing
+    if (state.lastTimestamp === 0 || timestamp - state.lastTimestamp > 100) {
+      state.lastTimestamp = timestamp;
+    }
+    const dt = (timestamp - state.lastTimestamp) * 0.001;
+    state.lastTimestamp = timestamp;
+
+    // FPS Counter
+    state.frameCount++;
+    if (timestamp - state.lastFpsTime >= 1000) {
+      state.fpsEl.textContent = `${state.frameCount} FPS`;
+      state.frameCount = 0;
+      state.lastFpsTime = timestamp;
+    }
+
+    const exp = state.exports;
+    if (exp.canvas_update) exp.canvas_update(state.canvasStructPtr, dt);
+    if (exp.canvas_render) exp.canvas_render(state.canvasStructPtr);
+
+    // Blit Memory to Canvas
+    if (exp.memory) {
+      const canvasStructView = new Uint32Array(exp.memory.buffer, state.canvasStructPtr, 4);
+      const colorBufferPtr = canvasStructView[2];
+
+      if (colorBufferPtr > 0) {
+        const pixelsView = new Uint8ClampedArray(
+          exp.memory.buffer,
+          colorBufferPtr,
+          INTERNAL_WIDTH * INTERNAL_HEIGHT * 4
+        );
+        state.ctx.putImageData(new ImageData(pixelsView, INTERNAL_WIDTH, INTERNAL_HEIGHT), 0, 0);
+      }
+    }
+  }
+
+  requestAnimationFrame(globalRenderLoop);
+};
+
+// ==========================================
+// Setup & Initialization
+// ==========================================
+
+// Global Keyboard Handler (Window level)
+window.addEventListener('keydown', (e) => {
+  const usedKeys = [32, 37, 39]; // Space, Left Arrow, Right Arrow
+  let keyHandled = false;
+
+  // Dispatch key event to ALL visible demos
+  for (const id in demoStates) {
+    const state = demoStates[id];
+    if (state.isVisible && state.exports && state.exports.on_key_down) {
+      state.exports.on_key_down(e.keyCode);
+
+      // If a visible demo uses this key, mark it to prevent default scrolling
+      if (usedKeys.includes(e.keyCode)) {
+        keyHandled = true;
+      }
+    }
+  }
+
+  // Prevent default page scroll if interacting with a visible demo
+  if (keyHandled) {
+    e.preventDefault();
+  }
 });
 
-if (demos.length > 0) {
-  loadDemo(demos[0]);
-}
+// Intersection Observer for Lazy Loading and Pausing
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    const id = entry.target.dataset.id;
+    const state = demoStates[id];
+
+    if (entry.isIntersecting) {
+      state.isVisible = true;
+      if (!state.isLoaded && !state.isLoading) {
+        state.isLoading = true;
+        loadWasm(state);
+      }
+    } else {
+      state.isVisible = false;
+    }
+  });
+}, { rootMargin: "100px 0px" });
+
+// Build the UI for each demo
+demoDefinitions.forEach(def => {
+  const card = document.createElement("div");
+  card.className = "demo-card";
+  card.dataset.id = def.id;
+
+  const helpHTML = def.help ? `<div class="instruction-bar"><span class="icon">💡</span> <span>${def.help}</span></div>` : '';
+
+  card.innerHTML = `
+    <div class="demo-header">
+      <div class="demo-title">${def.name}</div>
+      <div class="demo-fps" id="fps-${def.id}">0 FPS</div>
+    </div>
+    ${helpHTML}
+    <div class="canvas-wrapper">
+      <canvas id="canvas-${def.id}" width="${INTERNAL_WIDTH}" height="${INTERNAL_HEIGHT}"></canvas>
+      <div class="canvas-overlay" id="overlay-${def.id}">Loading...</div>
+    </div>
+  `;
+  demosContainer.appendChild(card);
+
+  const canvas = document.getElementById(`canvas-${def.id}`);
+  demoStates[def.id] = {
+    def,
+    canvas,
+    ctx: canvas.getContext("2d", { alpha: false }),
+    overlay: document.getElementById(`overlay-${def.id}`),
+    fpsEl: document.getElementById(`fps-${def.id}`),
+    exports: null,
+    canvasStructPtr: 0,
+    isLoaded: false,
+    isLoading: false,
+    isVisible: false,
+    heapPtr: 0,
+    lastTimestamp: 0,
+    frameCount: 0,
+    lastFpsTime: 0
+  };
+
+  bindInputEvents(def.id);
+  observer.observe(card);
+});
+
+// Start the global loop once
+requestAnimationFrame(globalRenderLoop);
