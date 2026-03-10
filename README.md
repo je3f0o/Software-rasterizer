@@ -27,8 +27,6 @@ Check out:
   Correct 3D depth calculations ensuring objects render perfectly in simulated 3D space.
 * **Alpha Blending & Transparency**:
   Built-in color mixing capable of complex semi-transparent overlaps.
-* **Marching Squares**:
-  Procedural generation algorithms visualizing complex dynamic fields for showcasing line api.
 
 ---
 
