@@ -28,9 +28,8 @@ const demosContainer = document.getElementById("demos-container");
 const demoStates = {};
 
 // ==========================================
-// Function Definitions (No Hoisting)
+// Function Definitions
 // ==========================================
-
 const createEnv = (state) => {
   return {
     cosf: Math.cos,
@@ -102,26 +101,31 @@ const bindInputEvents = (id) => {
 
   const getCoords = (e) => {
     const rect = cvs.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const touch = e.touches && e.touches.length > 0 ? e.touches[0] : null;
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
     const x = Math.round(((clientX - rect.left) / rect.width) * INTERNAL_WIDTH);
     const y = Math.round(((clientY - rect.top) / rect.height) * INTERNAL_HEIGHT);
     return { x, y };
   };
 
   const onDown = (e) => {
-    // Prevent default to stop mouse emulation on touch devices,
-    // but DO NOT call cvs.focus() to prevent auto-scrolling page jumps.
-    if (e.type === 'touchstart') e.preventDefault();
-
     if (state.exports && state.exports.on_mouse_down) {
       const { x, y } = getCoords(e);
-      state.exports.on_mouse_down(x, y);
+      const handled = state.exports.on_mouse_down(x, y);
+
+      if (handled) {
+        state.isDragging = true;
+        if (e.cancelable) e.preventDefault();
+      }
     }
   };
 
   const onMove = (e) => {
-    if (e.type === 'touchmove') e.preventDefault(); // Prevent scrolling while dragging
+    if (state.isDragging && e.cancelable) {
+      e.preventDefault();
+    }
+
     if (state.exports && state.exports.on_mouse_move) {
       const { x, y } = getCoords(e);
       state.exports.on_mouse_move(x, y);
@@ -129,6 +133,7 @@ const bindInputEvents = (id) => {
   };
 
   const onUp = () => {
+    state.isDragging = false;
     if (state.exports && state.exports.on_mouse_up) {
       state.exports.on_mouse_up();
     }
@@ -269,6 +274,7 @@ demoDefinitions.forEach(def => {
     isLoaded: false,
     isLoading: false,
     isVisible: false,
+    isDragging: false,
     heapPtr: 0,
     lastTimestamp: 0,
     frameCount: 0,
