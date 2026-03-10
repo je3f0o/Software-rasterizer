@@ -9,7 +9,7 @@ The entire core of the library sits gracefully at around **700 lines of C code**
 
 Check out:
 
-[🌐 Try the Interactive Web WASM Demo](https://je3f0o.github.io/Software-rasterizer/){:target="_blank"}
+<a href="https://je3f0o.github.io/Software-rasterizer/" target="_blank" rel="noopener">🌐 Try the Interactive Web WASM Demo</a>
 
 ---
 
